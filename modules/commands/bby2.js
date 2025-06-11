@@ -120,11 +120,11 @@ Reply as a girlfriend would reply - be sweet, caring, sometimes playful, sometim
   }
 };
 
-module.exports.handleReply = async function ({ api, event, handleReply }) {
+module.exports.handleReply = async function ({ api, event, handleReply, Users }) {
   try {
     if (event.type == "message_reply") {
       const reply = event.body;
-      const userName = await api.getUserInfo(event.senderID).then(info => info[event.senderID].name) || "জান";
+      const userName = await Users.getNameUser(event.senderID) || "জান";
       
       const openaiApiKey = "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";
       
@@ -177,12 +177,12 @@ module.exports.handleReply = async function ({ api, event, handleReply }) {
   }
 };
 
-module.exports.handleEvent = async function ({ api, event }) {
+module.exports.handleEvent = async function ({ api, event, Users }) {
   try {
     const body = event.body ? event.body.toLowerCase() : "";
     if (body.startsWith("bby2") || body.startsWith("girlfriend") || body.startsWith("gf")) {
       const arr = body.replace(/^\S+\s*/, "");
-      const userName = await api.getUserInfo(event.senderID).then(info => info[event.senderID].name) || "জান";
+      const userName = await Users.getNameUser(event.senderID) || "জান";
       
       if (!arr) {
         await api.sendMessage(`${userName} জান, আমার সাথে কথা বলো না! 😘💕`, event.threadID, (error, info) => {
