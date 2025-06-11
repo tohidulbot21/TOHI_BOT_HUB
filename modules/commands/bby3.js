@@ -77,6 +77,8 @@ module.exports.run = async function ({ api, event, args, Users }) {
 
     // If not any command, chat normally
     try {
+      console.log(`[BBY3] Making API request to: ${link}?text=${encodeURIComponent(dipto)}&senderID=${uid}&font=1`);
+      
       const response = await axios.get(`${link}?text=${encodeURIComponent(dipto)}&senderID=${uid}&font=1`, {
         timeout: 15000,
         headers: {
@@ -84,14 +86,17 @@ module.exports.run = async function ({ api, event, args, Users }) {
         }
       });
       
+      console.log('[BBY3] API Response:', response.data);
+      
       if (!response.data || !response.data.reply) {
+        console.log('[BBY3] Invalid response format:', response.data);
         throw new Error('Invalid response format');
       }
       
       const reply = response.data.reply;
       
       // Add girlfriend style to the reply
-      const girlfriendReply = `${reply} 💕`;
+      const girlfriendReply = `${userName} জান, ${reply} 💕`;
       
       return api.sendMessage(girlfriendReply, event.threadID,
         (error, info) => {
@@ -107,11 +112,17 @@ module.exports.run = async function ({ api, event, args, Users }) {
           }
         }, event.messageID);
     } catch (apiError) {
-      console.error('[BBY3] API Error:', apiError.message);
+      console.error('[BBY3] API Error Details:', {
+        message: apiError.message,
+        response: apiError.response ? apiError.response.data : 'No response data',
+        status: apiError.response ? apiError.response.status : 'No status'
+      });
+      
       const fallbackResponses = [
         `${userName} জান, আমার মাথা একটু ঘুরছে 😵 একটু পরে কথা বলি? 💕`,
         `সরি বেবি, আমি এখন একটু busy আছি 🥺 তুমি একটু অপেক্ষা করবে? 💖`,
-        `${userName}, আমার internet connection টা খারাপ 😔 তুমি আবার বলো তো? 💝`
+        `${userName}, আমার internet connection টা খারাপ 😔 তুমি আবার বলো তো? 💝`,
+        `API Error: ${apiError.message} - ${userName} জান, একটু সমস্যা হচ্ছে 😔`
       ];
       const fallback = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
       return api.sendMessage(fallback, event.threadID, event.messageID);
