@@ -121,7 +121,7 @@ Reply as a girlfriend would reply - be sweet, caring, sometimes playful, sometim
 
 module.exports.handleReply = async function ({ api, event, handleReply, Users }) {
   try {
-    if (event.type == "message_reply") {
+    if (handleReply && handleReply.name === "bby2" && event.senderID === handleReply.author) {
       const reply = event.body;
       const userName = await Users.getNameUser(event.senderID) || "জান";
 
