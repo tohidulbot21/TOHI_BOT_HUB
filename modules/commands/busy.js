@@ -8,7 +8,7 @@ module.exports = {
     credits: "TOHI-BOT-HUB",
     description: "🚫 Do not disturb mode - Bot will notify when you're tagged",
     commandCategory: "utility",
-    cooldowns: 3,
+    cooldowns: 5,
     usages: "[reason] or off",
     handleEvent: true
   },
@@ -59,7 +59,7 @@ module.exports = {
     } catch (error) {
       console.error('[BUSY] Command error:', error);
       return api.sendMessage(
-        `❌ **System Error**\n\n` +
+        `❌ System Error\n\n` +
         `🔧 Busy মোড সেট করতে সমস্যা হয়েছে।\n` +
         `💡 আবার চেষ্টা করুন।\n\n` +
         `🚩 Made by TOHIDUL`,

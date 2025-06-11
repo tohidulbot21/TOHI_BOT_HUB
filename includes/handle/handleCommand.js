@@ -1,6 +1,6 @@
 let activeCmd = false;
 const processedMessages = new Map(); // Track processed messages
-const DUPLICATE_TIMEOUT = 5000; // 5 seconds
+const DUPLICATE_TIMEOUT = 3000; // 3 seconds
 
 // Define shouldIgnoreError function to handle specific errors
 function shouldIgnoreError(error) {
@@ -10,12 +10,12 @@ function shouldIgnoreError(error) {
   const errorMessage = error.message ? error.message.toLowerCase() : '';
   
   // Facebook spam protection errors
-  if (error.error === 1390008 || errorStr.includes("can't use this feature")) {
+  if (error.error === 1390008 || errorStr.includes("can't use this feature") || errorStr.includes("spam")) {
     return true;
   }
   
   // Content availability errors
-  if (error.error === 1357031 || errorStr.includes('content is no longer available')) {
+  if (error.error === 1357031 || errorStr.includes('content is no longer available') || errorStr.includes('content you requested cannot be displayed')) {
     return true;
   }
   
@@ -104,20 +104,16 @@ function levenshteinDistance(str1, str2) {
       return;
     }
 
-    // Prevent duplicate message processing
-    const messageKey = `${event.threadID}_${event.senderID}_${event.body.trim()}_${Date.now()}`;
-    const shortKey = `${event.threadID}_${event.senderID}_${event.body.trim()}`;
+    // Prevent duplicate message processing with message ID
+    const messageKey = `${event.threadID}_${event.messageID}`;
     
     // Check if we've processed this exact message recently
-    if (processedMessages.has(shortKey)) {
-      const lastProcessed = processedMessages.get(shortKey);
-      if (Date.now() - lastProcessed < DUPLICATE_TIMEOUT) {
-        return; // Skip duplicate message
-      }
+    if (processedMessages.has(messageKey)) {
+      return; // Skip duplicate message
     }
     
     // Mark this message as being processed
-    processedMessages.set(shortKey, Date.now());
+    processedMessages.set(messageKey, Date.now());
     
     // Clean old entries periodically
     if (processedMessages.size > 1000) {
@@ -571,10 +567,11 @@ function levenshteinDistance(str1, str2) {
         }
 
         // Find similar commands using simple string matching
+        const cmdNameWithoutPrefix = commandName.replace(PREFIX, '');
         const suggestions = allCommands.filter(cmd => 
-          cmd.includes(commandName) || 
-          commandName.includes(cmd) ||
-          levenshteinDistance(cmd, commandName) <= 2
+          cmd.includes(cmdNameWithoutPrefix) || 
+          cmdNameWithoutPrefix.includes(cmd) ||
+          levenshteinDistance(cmd, cmdNameWithoutPrefix) <= 2
         ).slice(0, 3);
 
         let suggestionText = "";

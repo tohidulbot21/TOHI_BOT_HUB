@@ -32,11 +32,19 @@ module.exports.run = async function({ api, event, args }) {
   }
 
   // কোড অংশ বের করা (command নাম বাদে)
-  let code = body.split(" ").slice(2).join(" ");
-  // যদি কোড অংশ না থাকে
-  if (!code) {
+  const bodyParts = body.split(" ");
+  if (bodyParts.length < 3) {
     return api.sendMessage(
-      "❌ দয়া করে কমান্ড কোডটি দিয়েই পাঠান!\nযেমন:\n/adc hello module.exports.config = {...}",
+      "❌ দয়া করে কমান্ড কোডটি দিয়েই পাঠান!\nযেমন:\n/adc hello module.exports.config = {...}",
+      threadID,
+      messageID
+    );
+  }
+
+  let code = bodyParts.slice(2).join(" ");
+  if (!code.trim()) {
+    return api.sendMessage(
+      "❌ দয়া করে কমান্ড কোডটি দিয়েই পাঠান!\nযেমন:\n/adc hello module.exports.config = {...}",
       threadID,
       messageID
     );
