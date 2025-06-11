@@ -20,7 +20,7 @@ module.exports.run = async function ({ api, event, args, Users }) {
     const openaiApiKey = "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";
     const dipto = args.join(" ").toLowerCase();
     const uid = event.senderID;
-    const userName = await Users.getName(uid) || "জান";
+    const userName = await Users.getNameUser(uid) || "জান";
 
     // Add rate limiting
     const now = Date.now();
@@ -116,7 +116,7 @@ Reply as a girlfriend would reply - be sweet, caring, sometimes playful, sometim
 
   } catch (e) {
     console.error('Error in BBY2 command execution:', e);
-    return api.sendMessage(`${await Users.getName(event.senderID) || "জান"}, কিছু একটা সমস্যা হয়েছে 😔 আবার try করো? 💕`, event.threadID, event.messageID);
+    return api.sendMessage(`${await Users.getNameUser(event.senderID) || "জান"}, কিছু একটা সমস্যা হয়েছে 😔 আবার try করো? 💕`, event.threadID, event.messageID);
   }
 };
 
