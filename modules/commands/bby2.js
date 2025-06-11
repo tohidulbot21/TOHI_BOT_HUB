@@ -10,8 +10,8 @@ module.exports.config = {
   description: "AI girlfriend chatbot powered by OpenAI",
   commandCategory: "chat",
   category: "chat",
-  usePrefix: true,
-  prefix: true,
+  usePrefix: false,
+  prefix: false,
   usages: `[anyMessage] OR teach [YourMessage] - [Reply] OR remove [YourMessage]`,
 };
 
