@@ -1,4 +1,3 @@
-
 const axios = require('axios');
 
 module.exports.config = {
@@ -25,7 +24,7 @@ module.exports.run = async function ({ api, event, args, Users }) {
     // Add rate limiting
     const now = Date.now();
     if (!global.bby2CommandCooldown) global.bby2CommandCooldown = new Map();
-    
+
     const lastUsed = global.bby2CommandCooldown.get(uid) || 0;
     if (now - lastUsed < 3000) { // 3 second cooldown
       return;
@@ -85,12 +84,12 @@ Reply as a girlfriend would reply - be sweet, caring, sometimes playful, sometim
       }
 
       const aiReply = response.data.choices[0].message.content;
-      
+
       return api.sendMessage(aiReply, event.threadID,
         (error, info) => {
           if (!error && info) {
             global.client.handleReply.push({
-              name: this.config.name,
+              name: "bby2",
               type: "reply",
               messageID: info.messageID,
               author: event.senderID,
@@ -101,7 +100,7 @@ Reply as a girlfriend would reply - be sweet, caring, sometimes playful, sometim
 
     } catch (apiError) {
       console.error('[BBY2] OpenAI API Error:', apiError.message);
-      
+
       // Fallback responses if API fails
       const fallbackResponses = [
         `${userName} জান, আমার মাথা একটু ঘুরছে 😵 একটু পরে কথা বলি? 💕`,
@@ -109,7 +108,7 @@ Reply as a girlfriend would reply - be sweet, caring, sometimes playful, sometim
         `${userName}, আমার internet connection টা খারাপ 😔 তুমি আবার বলো তো? 💝`,
         `জানু, আমি তোমার কথা শুনতে পাচ্ছি না ভালো করে 🤭 আবার বলো? 💕`
       ];
-      
+
       const fallback = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
       return api.sendMessage(fallback, event.threadID, event.messageID);
     }
@@ -125,9 +124,9 @@ module.exports.handleReply = async function ({ api, event, handleReply, Users })
     if (event.type == "message_reply") {
       const reply = event.body;
       const userName = await Users.getNameUser(event.senderID) || "জান";
-      
+
       const openaiApiKey = "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";
-      
+
       const girlfriendPrompt = `You are a loving, caring Bengali girlfriend AI. Your name is Bby. Reply in Bengali with romantic, sweet tone. Use emojis. Address user as "জান", "বেবি", "জানু". Be flirty, romantic but appropriate. User's name is ${userName}. This is a continued conversation. User replied: "${reply}"`;
 
       try {
@@ -154,11 +153,11 @@ module.exports.handleReply = async function ({ api, event, handleReply, Users })
         });
 
         const aiReply = response.data.choices[0].message.content;
-        
+
         await api.sendMessage(aiReply, event.threadID, (error, info) => {
           if (!error && info) {
             global.client.handleReply.push({
-              name: this.config.name,
+              name: "bby2",
               type: "reply",
               messageID: info.messageID,
               author: event.senderID,
@@ -183,7 +182,7 @@ module.exports.handleEvent = async function ({ api, event, Users }) {
     if (body.startsWith("bby2") || body.startsWith("girlfriend") || body.startsWith("gf")) {
       const arr = body.replace(/^\S+\s*/, "");
       const userName = await Users.getNameUser(event.senderID) || "জান";
-      
+
       if (!arr) {
         await api.sendMessage(`${userName} জান, আমার সাথে কথা বলো না! 😘💕`, event.threadID, (error, info) => {
           if (!error && info) {
@@ -198,7 +197,7 @@ module.exports.handleEvent = async function ({ api, event, Users }) {
       } else {
         // Process with OpenAI here similar to run function
         const openaiApiKey = "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";
-        
+
         try {
           const response = await axios.post('https://api.openai.com/v1/chat/completions', {
             model: "gpt-3.5-turbo",
@@ -223,7 +222,7 @@ module.exports.handleEvent = async function ({ api, event, Users }) {
           });
 
           const aiReply = response.data.choices[0].message.content;
-          
+
           await api.sendMessage(aiReply, event.threadID, (error, info) => {
             if (!error && info) {
               global.client.handleReply.push({
