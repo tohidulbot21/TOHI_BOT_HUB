@@ -111,74 +111,36 @@ module.exports = function ({ api }) {
       event,
     };
 
-    // Check approval system before processing any events
-    const configPath = require('path').join(__dirname, '../config.json');
-    let config;
-    try {
-      delete require.cache[require.resolve(configPath)];
-      config = require(configPath);
-    } catch (error) {
-      console.error('Error loading config:', error);
-      config = {};
-    }
-
-    // Initialize AUTO_APPROVE and APPROVAL systems if not exists
-    if (!config.AUTO_APPROVE) {
-      config.AUTO_APPROVE = {
-        enabled: true,
-        approvedGroups: [],
-        autoApproveMessage: true
-      };
-      require('fs').writeFileSync(configPath, JSON.stringify(config, null, 2));
-    }
-
-    if (!config.APPROVAL) {
-      config.APPROVAL = {
-        approvedGroups: [],
-        pendingGroups: [],
-        rejectedGroups: []
-      };
-      require('fs').writeFileSync(configPath, JSON.stringify(config, null, 2));
-    }
-
+    // Simplified approval system
     const isAdmin = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
     const threadID = String(event.threadID);
-
-    // Check if group is approved for commands
-    let isApproved = false;
-
-    // Check AUTO_APPROVE system first
-    if (config.AUTO_APPROVE && config.AUTO_APPROVE.enabled) {
-      // Auto approve the group if bot is in it
-      if (!config.AUTO_APPROVE.approvedGroups.includes(threadID)) {
-        config.AUTO_APPROVE.approvedGroups.push(threadID);
-        require('fs').writeFileSync(configPath, JSON.stringify(config, null, 2));
-      }
-      isApproved = true;
-    } else {
-      // Use manual APPROVAL system
-      isApproved = config.APPROVAL.approvedGroups.includes(threadID);
+    
+    // Load config once per event
+    let config = {};
+    try {
+      const configPath = require('path').join(__dirname, '../config.json');
+      config = require(configPath);
+    } catch (error) {
+      // Use default config if file not found
+      config = {
+        AUTO_APPROVE: { enabled: true, approvedGroups: [] },
+        APPROVAL: { approvedGroups: [], pendingGroups: [], rejectedGroups: [] }
+      };
     }
 
-    const isRejected = config.APPROVAL.rejectedGroups && config.APPROVAL.rejectedGroups.includes(threadID);
+    // Quick approval check for groups
+    if (event.isGroup && event.type === "message") {
+      const isApproved = config.AUTO_APPROVE?.enabled || 
+                        config.APPROVAL?.approvedGroups?.includes(threadID) || 
+                        false;
+      const isRejected = config.APPROVAL?.rejectedGroups?.includes(threadID) || false;
 
-    // If group is rejected, no commands work at all
-    if (isRejected) {
-      return;
-    }
-
-    // If group is not approved, block all commands except admin approval commands
-    if (event.isGroup) {
-      if (!isApproved) {
-        if (event.type === "message" || event.type === "message_reply") {
-          const commandName = (event.body || '').trim().split(' ')[0].toLowerCase();
-
-          // Allow only admin approval commands in non-approved groups
-          if (!isAdmin || (commandName !== '/approve' && commandName !== '/reject' && commandName !== '/pending' && commandName !== '/approved')) {
-            return; // Block all other commands in non-approved groups
-          }
-        } else {
-          // Allow events like join/leave to be processed for admin notifications
+      if (isRejected) return;
+      
+      if (!isApproved && !isAdmin) {
+        const commandName = (event.body || '').trim().split(' ')[0].toLowerCase();
+        if (commandName.startsWith('/') && !['approve', 'reject'].includes(commandName.slice(1))) {
+          return; // Block non-approval commands in non-approved groups
         }
       }
     }

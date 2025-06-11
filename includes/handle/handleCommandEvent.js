@@ -8,32 +8,19 @@ module.exports = function ({ api, models, Users, Threads, Currencies, ...rest })
         var senderID = String(senderID);
         var threadID = String(threadID);
         
-        // Approval system check
-        const fs = require('fs');
-        const path = require('path');
-        const configPath = path.join(__dirname, '../../config.json');
-        
-        let isApproved = true; // Default to approved for PM
+        // Simplified approval check
         const isPM = threadID === senderID;
-        
         if (!isPM) {
           try {
-            delete require.cache[require.resolve(configPath)];
-            const config = require(configPath);
-            
-            // Check AUTO_APPROVE system first
-            if (config.AUTO_APPROVE && config.AUTO_APPROVE.enabled) {
-              isApproved = config.AUTO_APPROVE.approvedGroups.includes(threadID);
-            } else if (config.APPROVAL) {
-              isApproved = config.APPROVAL.approvedGroups.includes(threadID);
-            }
+            const config = require('../../config.json');
+            const isApproved = config.AUTO_APPROVE?.enabled || 
+                              config.APPROVAL?.approvedGroups?.includes(threadID) || 
+                              false;
+            if (!isApproved) return;
           } catch (error) {
-            console.log("Error checking approval system in handleCommandEvent:", error);
+            // Continue if config can't be loaded
           }
         }
-        
-        // শুধুমাত্র APPROVED গ্রুপে বা ইনবক্সে বট কাজ করবে
-        if (!isPM && !isApproved) return;
         
         if (userBanned.has(senderID) || threadBanned.has(threadID) || allowInbox == !![] && senderID == threadID) return;
         for (const eventReg of eventRegistered) {

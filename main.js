@@ -58,16 +58,30 @@ global.moduleData = new Array();
 global.language = new Object();
 global.account = new Object();
 
-// Global error handlers - show all logs
+// Enhanced global error handlers
 process.on('unhandledRejection', (reason, promise) => {
+  if (reason && (
+    reason.toString().includes('ENOENT') ||
+    reason.toString().includes('rate limit') ||
+    reason.toString().includes('1357031') ||
+    reason.toString().includes('1390008')
+  )) {
+    // Ignore common Facebook API and file system errors
+    return;
+  }
   logger.log(`Unhandled Rejection: ${reason}`, "ERROR");
 });
 
 process.on('uncaughtException', (error) => {
+  if (error.code === 'ENOENT' && error.path && error.path.includes('cache')) {
+    // Ignore cache file errors
+    return;
+  }
+  
   logger.log(`Uncaught Exception: ${error.message}`, "ERROR");
 
   // Handle critical errors that need restart
-  const criticalErrors = ['ECONNRESET', 'ENOTFOUND', 'socket hang up', 'Network Error'];
+  const criticalErrors = ['ECONNRESET', 'ENOTFOUND', 'socket hang up'];
   const isCritical = criticalErrors.some(err => error.message && error.message.includes(err));
 
   if (isCritical) {

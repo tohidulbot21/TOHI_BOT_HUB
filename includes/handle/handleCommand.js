@@ -129,65 +129,8 @@ function levenshteinDistance(str1, str2) {
       }
     }
 
-    // Check approval system before executing any command
-    const fs = require('fs');
-    const path = require('path');
-    const configPath = path.join(__dirname, '../../config.json');
-
-    try {
-      delete require.cache[require.resolve(configPath)];
-      const config = require(configPath);
-
-      if (event.isGroup) {
-        const threadID = event.threadID;
-        const isAdmin = global.config.ADMINBOT.includes(event.senderID);
-        let isApproved = false;
-
-        // Check if AUTO_APPROVE system is enabled
-        if (config.AUTO_APPROVE && config.AUTO_APPROVE.enabled) {
-          // Auto-approve system: automatically approve any group the bot is in
-          if (!config.AUTO_APPROVE.approvedGroups.includes(threadID)) {
-            config.AUTO_APPROVE.approvedGroups.push(threadID);
-            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-          }
-          isApproved = true; // All commands work in auto-approve mode
-        } else {
-          // Manual approval system: use the old APPROVAL system
-          if (config.APPROVAL) {
-            // Initialize APPROVAL object if it doesn't exist
-            if (!config.APPROVAL.approvedGroups) {
-              config.APPROVAL.approvedGroups = [];
-              fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-            }
-
-            // Check if group is approved
-            isApproved = config.APPROVAL.approvedGroups.includes(threadID);
-
-            // If group is not approved, block all commands except /approve for admins
-            if (!isApproved) {
-              if (!isAdmin) {
-                return; // Non-admins can't use any commands in non-approved groups
-              }
-
-              // For admins, only allow /approve command in non-approved groups
-              const commandName = (event.body || '').trim().split(' ')[0];
-              if (commandName !== '/approve') {
-                return; // Only allow /approve command for admins in non-approved groups
-              }
-            }
-          } else {
-            isApproved = true; // If no approval system, allow all commands
-          }
-        }
-
-        // If group is not approved, stop processing here
-        if (!isApproved && !isAdmin) {
-          return;
-        }
-      }
-    } catch (error) {
-      console.log("Error checking approval system:", error);
-    }
+    // Simplified approval check - handled in listen.js already
+    // Skip duplicate approval checking here to prevent conflicts
 
     const dateNow = Date.now();
     const time = moment.tz("Asia/Manila").format("HH:MM:ss DD/MM/YYYY");
@@ -552,45 +495,21 @@ function levenshteinDistance(str1, str2) {
         activeCmd = true;
         
         try {
-          // Log command usage to console with rate-limited user info
-          let userInfo, userName;
+          // Simplified logging with fallback
+          let userName = `User-${senderID.slice(-6)}`;
           try {
-            // Use global error handler for rate-limited getUserInfo
-            const globalErrorHandler = require('../../utils/globalErrorHandler');
-            const fbUserInfo = await globalErrorHandler.rateLimitedGetUserInfo(api, senderID);
-            userName = fbUserInfo[senderID]?.name || `User-${senderID.slice(-6)}`;
-            
-            // Store the Facebook name in event object for commands to use
-            if (fbUserInfo[senderID]?.name) {
-              event.fbUserName = fbUserInfo[senderID].name;
+            const userData = await Users.getData(senderID);
+            if (userData && userData.name) {
+              userName = userData.name;
+              event.fbUserName = userData.name;
             }
-          } catch (error) {
-            if (!shouldIgnoreError(error)) {
-              logger.log(`Error getting user info for ${senderID}: ${error.message}`, "ERROR");
-            }
-            // Fallback to simple identifier
-            userName = `User-${senderID.slice(-6)}`;
-            
-            // Try to get name from Users database as fallback
-            try {
-              const userData = await Users.getData(senderID);
-              if (userData && userData.name) {
-                event.fbUserName = userData.name;
-              }
-            } catch (dbError) {
-              // Silent fallback
-            }
+          } catch (dbError) {
+            // Silent fallback
           }
           
-          const threadInfo = event.isGroup ? (await Threads.getInfo(threadID)).threadName || "Unknown Group" : "Private Chat";
+          logger.log(`Command "${command.config.name}" used by ${userName}`, "COMMAND");
           
-          logger.log(`Command "${command.config.name}" used by ${userName} (${senderID}) in ${threadInfo} (${threadID})`, "COMMAND");
-          
-          const startTime = Date.now();
           await command.run(Obj);
-          const endTime = Date.now();
-          
-          logger.log(`Command "${command.config.name}" completed in ${endTime - startTime}ms`, "SUCCESS");
           timestamps.set(senderID, dateNow);
         } finally {
           // Always reset activeCmd
@@ -600,22 +519,24 @@ function levenshteinDistance(str1, str2) {
         return;
       }
     } catch (e) {
-      // Only log non-ignorable errors
-      if (!shouldIgnoreError(e)) {
+      // Enhanced error handling
+      if (e.code === 'ENOENT' && e.path && e.path.includes('cache')) {
+        // File not found in cache - ignore these errors
+        logger.log(`Cache file not found (ignored): ${e.path}`, "DEBUG");
+      } else if (!shouldIgnoreError(e)) {
         logger.log(`Command error in "${command?.config?.name || commandName}": ${e.message}`, "ERROR");
-        logger.log(`Stack trace: ${e.stack}`, "ERROR");
         
-        // Use rate limited sending for error messages
-        try {
-          const rateLimitManager = require('../../utils/rateLimitManager');
-          return await rateLimitManager.queueMessage(
-            api,
-            threadID,
-            global.getText("handleCommand", "commandError", commandName, e.message || "Unknown error")
-          );
-        } catch (sendError) {
-          // If rate limited sending fails, just log the error
-          logger.log(`Failed to send error message: ${sendError.message}`, "ERROR");
+        // Only send error message for critical errors
+        if (!e.message.includes('rate limit') && !e.message.includes('timeout')) {
+          try {
+            api.sendMessage(
+              `❌ Command error: ${e.message}`,
+              threadID,
+              messageID
+            );
+          } catch (sendError) {
+            // Silent fail if can't send error message
+          }
         }
       }
     }

@@ -85,8 +85,18 @@ module.exports = {
         
         // Check if user is in busy mode
         if (userData.data && userData.data.busy !== undefined) {
-          const userInfo = await api.getUserInfo(userID);
-          const userName = userInfo[userID].name;
+          let userName = `User-${userID.slice(-6)}`;
+          
+          try {
+            // Try to get user name, but don't fail if rate limited
+            const userInfo = await api.getUserInfo(userID);
+            if (userInfo[userID]?.name) {
+              userName = userInfo[userID].name;
+            }
+          } catch (userInfoError) {
+            // Use fallback name if getUserInfo fails
+          }
+
           const busyReason = userData.data.busy;
 
           // Create busy notification message
@@ -97,24 +107,19 @@ module.exports = {
             busyMessage = `🚫 ${userName} ব্যস্ত আছেন\n📝 কোনো কারণ উল্লেখ করা হয়নি`;
           }
 
-          // Send the busy notification with mention
-          await api.sendMessage({
-            body: busyMessage,
-            mentions: [{
-              tag: userName,
-              id: userID
-            }]
-          }, threadID, messageID);
+          // Send the busy notification
+          try {
+            await api.sendMessage(busyMessage, threadID);
+          } catch (sendError) {
+            // Silent fail for sending busy notifications
+          }
           
-          console.log(`[BUSY] Busy notification sent for ${userName} (${userID}) in thread ${threadID}`);
-          
-          // Only send one notification per message even if multiple busy users are mentioned
+          // Only send one notification per message
           break;
         }
       }
     } catch (error) {
-      console.error('[BUSY] HandleEvent error:', error);
-      // Don't send error message for handleEvent to avoid spam
+      // Silent error handling for event functions
     }
   }
 };
