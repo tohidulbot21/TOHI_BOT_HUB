@@ -126,39 +126,50 @@ module.exports.run = async function ({ api, event, args, Users }) {
 module.exports.handleReply = async function ({ api, event, handleReply, Users }) {
   try {
     if (handleReply && handleReply.name === "bby3" && event.senderID === handleReply.author) {
-      const reply = event.body.toLowerCase();
+      const reply = event.body;
       const userName = await Users.getNameUser(event.senderID) || "জান";
       
-      const response = await axios.get(`${await baseApiUrl()}/baby?text=${encodeURIComponent(reply)}&senderID=${event.senderID}&font=1`, {
-        timeout: 15000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      try {
+        const link = `${await baseApiUrl()}/baby`;
+        const response = await axios.get(`${link}?text=${encodeURIComponent(reply)}&senderID=${event.senderID}&font=1`, {
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+        
+        if (!response.data || !response.data.reply) {
+          throw new Error('Invalid API response');
         }
-      });
-      
-      if (!response.data || !response.data.reply) {
-        throw new Error('Invalid API response');
+        
+        const apiReply = response.data.reply;
+        const girlfriendReply = `${userName} জান, ${apiReply} 💕`;
+        
+        await api.sendMessage(girlfriendReply, event.threadID, (error, info) => {
+          if (!error && info) {
+            global.client.handleReply.push({
+              name: "bby3",
+              type: "reply",
+              messageID: info.messageID,
+              author: event.senderID,
+              lnk: girlfriendReply
+            });
+          }
+        }, event.messageID);
+        
+      } catch (apiError) {
+        console.error('[BBY3] API Error in HandleReply:', apiError.message);
+        const fallbackResponses = [
+          `${userName} জান, আমার মাথা একটু ঘুরছে 😵 একটু পরে কথা বলি? 💕`,
+          `${userName} জানু, আমি তোমার কথা ভালো বুঝতে পারছি না 🥺 আবার বলো? 💖`,
+          `সরি ${userName}, আমি এখন একটু ব্যস্ত আছি 🤭 একটু পরে কথা বলি? 💝`
+        ];
+        const fallback = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+        await api.sendMessage(fallback, event.threadID, event.messageID);
       }
-      
-      const apiReply = response.data.reply;
-      const girlfriendReply = `${apiReply} 💕`;
-      
-      await api.sendMessage(girlfriendReply, event.threadID, (error, info) => {
-        if (!error && info) {
-          global.client.handleReply.push({
-            name: "bby3",
-            type: "reply",
-            messageID: info.messageID,
-            author: event.senderID,
-            lnk: girlfriendReply
-          });
-        }
-      }, event.messageID);
     }
   } catch (err) {
     console.error('[BBY3] HandleReply Error:', err.message);
-    const userName = await Users.getNameUser(event.senderID) || "জান";
-    await api.sendMessage(`${userName} জান, আমি তোমার কথা ভালো বুঝতে পারছি না 🥺 আবার বলো? 💖`, event.threadID, event.messageID);
   }
 };
 
