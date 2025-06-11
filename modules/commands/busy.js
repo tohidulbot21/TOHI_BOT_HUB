@@ -95,9 +95,9 @@ module.exports = {
           let userName = `User-${userID.slice(-6)}`;
           
           try {
-            // Try to get user name, but don't fail if rate limited
+            // Try to get user name with better error handling
             const userInfo = await api.getUserInfo(userID);
-            if (userInfo[userID]?.name) {
+            if (userInfo && userInfo[userID] && userInfo[userID].name) {
               userName = userInfo[userID].name;
             }
           } catch (userInfoError) {
