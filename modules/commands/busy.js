@@ -45,9 +45,16 @@ module.exports = {
       userData.data.busy = reason || true;
       await Users.setData(senderID, userData);
 
-      // Get user info for response
-      const userInfo = await api.getUserInfo(senderID);
-      const userName = userInfo[senderID].name;
+      // Get user info for response with fallback
+      let userName = `User-${senderID.slice(-6)}`;
+      try {
+        const userInfo = await api.getUserInfo(senderID);
+        if (userInfo && userInfo[senderID] && userInfo[senderID].name) {
+          userName = userInfo[senderID].name;
+        }
+      } catch (userInfoError) {
+        // Use fallback name if getUserInfo fails
+      }
 
       const successMessage = reason ? 
         `✅ Busy Mode চালু হয়েছে\n📝 কারণ: ${reason}\n🔓 বন্ধ করতে: /busy off`
