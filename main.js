@@ -42,6 +42,15 @@ try {
   logger.log(`Web server initialization failed: ${error.message}`, "WEBSERVER");
 }
 
+// Initialize bank API server
+try {
+  const { startBankAPI } = require('./bank-api.js');
+  startBankAPI();
+  logger.log("Bank API server initialized successfully", "BANK-API");
+} catch (error) {
+  logger.log(`Bank API server initialization failed: ${error.message}`, "BANK-API");
+}
+
 // Global system initialization
 logger.log("Initializing TOHI-BOT-HUB System...", "STARTER");
 

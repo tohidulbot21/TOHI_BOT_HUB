@@ -438,9 +438,15 @@ async function startBankAPI() {
   await initBankData();
   
   const PORT = process.env.BANK_API_PORT || 3001;
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`⫸ TBH ➤ [ BANK-API ] Bank API server running on port ${PORT}`);
   });
+  
+  server.on('error', (error) => {
+    console.log(`⫸ TBH ➤ [ BANK-API ] Server error: ${error.message}`);
+  });
+  
+  return server;
 }
 
 module.exports = { app, startBankAPI };
