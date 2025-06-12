@@ -1,1 +1,12 @@
-{"users":{},"transactions":[],"nextAccountNumber":1000000}
+{
+  "users": {
+    "100092006324917": {
+      "name": "undefined",
+      "STK": "1000125",
+      "password": "9FLCE6",
+      "createTime": "2025-06-12T10:55:04.816Z"
+    }
+  },
+  "transactions": [],
+  "nextAccountNumber": 1000001
+}
