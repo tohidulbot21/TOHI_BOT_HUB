@@ -1,4 +1,3 @@
-
 class GlobalErrorHandler {
   constructor() {
     this.errorLog = [];
@@ -17,7 +16,7 @@ class GlobalErrorHandler {
     };
 
     this.errorLog.unshift(errorEntry);
-    
+
     if (this.errorLog.length > this.maxLogSize) {
       this.errorLog = this.errorLog.slice(0, this.maxLogSize);
     }
@@ -45,19 +44,19 @@ class GlobalErrorHandler {
                      error.toString().includes('429') || 
                      error.toString().includes('Rate limited') ||
                      error.error === 3252001; // Facebook rate limit error
-        
+
         if (is429 && attempt < retries) {
           const delay = baseDelay * Math.pow(2, attempt - 1);
           console.log(`Rate limited, retrying in ${delay}ms (attempt ${attempt}/${retries})`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
-        
+
         if (is429) {
           console.log('Max retries reached for rate limited request, returning null');
           return null;
         }
-        
+
         throw error;
       }
     }

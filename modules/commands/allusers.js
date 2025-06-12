@@ -11,6 +11,35 @@ module.exports.config = {
 };
 
 module.exports.run = async function ({ api, event, args, Users }) {
+    // Helper function to get user name with fallback
+    async function getUserName(userId) {
+      try {
+        // First check usersData.json
+        const userData = await Users.getData(userId);
+        if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim() && !userData.name.startsWith('User')) {
+          return userData.name;
+        }
+        
+        // Try to get name using Users.getNameUser
+        try {
+          const name = await Users.getNameUser(userId);
+          if (name && name !== 'undefined' && !name.startsWith('User-') && name.trim()) {
+            return name;
+          }
+        } catch (userError) {
+          console.log(`[ALLUSERS] Users.getNameUser error for ${userId}: ${userError.message}`);
+        }
+        
+        // Fallback with better naming
+        const shortId = userId.slice(-6);
+        return `User_${shortId}`;
+      } catch (error) {
+        console.log(`[ALLUSERS] Error getting user name for ${userId}: ${error.message}`);
+        const shortId = userId.slice(-6);
+        return `User_${shortId}`;
+      }
+    }
+
     // Check if the user is a bot admin or group admin
     const isBotAdmin = global.config.ADMINBOT.includes(event.senderID.toString());
     

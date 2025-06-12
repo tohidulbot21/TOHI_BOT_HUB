@@ -13,8 +13,38 @@ module.exports.run = async function({ event, api, args, client, Currencies, User
 const fs = global.nodemodule["fs-extra"];
     const request = global.nodemodule["request"];
     const axios = global.nodemodule['axios']; 
+    
+    // Helper function to get user name with fallback
+    async function getUserName(userId) {
+      try {
+        // First check usersData.json
+        const userData = await Users.getData(userId);
+        if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim() && !userData.name.startsWith('User')) {
+          return userData.name;
+        }
+        
+        // Try to get name using Users.getNameUser
+        try {
+          const name = await Users.getNameUser(userId);
+          if (name && name !== 'undefined' && !name.startsWith('User-') && name.trim()) {
+            return name;
+          }
+        } catch (userError) {
+          console.log(`[UID] Users.getNameUser error for ${userId}: ${userError.message}`);
+        }
+        
+        // Fallback with better naming
+        const shortId = userId.slice(-6);
+        return `User_${shortId}`;
+      } catch (error) {
+        console.log(`[UID] Error getting user name for ${userId}: ${error.message}`);
+        const shortId = userId.slice(-6);
+        return `User_${shortId}`;
+      }
+    }
+    
     if(event.type == "message_reply") { 
-      let name = await Users.getNameUser(event.messageReply.senderID) 
+      let name = await getUserName(event.messageReply.senderID);
 	uid = event.messageReply.senderID
 	var callback = () =>   api.sendMessage({body:`=== [ 𝗨𝗜𝗗 𝗨𝗦𝗘𝗥 ] ====\n━━━━━━━━━━━━━━━━━━\n[ ▶️]➜ 𝗜𝗗: ${uid}\n[ ▶️]➜ 𝗜𝗕: m.me/${uid}\n[ ▶️]➜ 𝗟𝗶𝗻𝗸𝗳𝗯: https://www.facebook.com/profile.php?id=${uid}\n━━━━━━━━━━━━━━━━━━`, attachment: fs.createReadStream(__dirname + "/cache/1.png")}, event.threadID,
         () => fs.unlinkSync(__dirname + "/cache/1.png"),event.messageID); 
