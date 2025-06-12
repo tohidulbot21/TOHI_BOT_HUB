@@ -1,18 +1,18 @@
+
 module.exports.config = {
   name: "video2",
   version: "1.0.0",
   hasPermssion: 0,
   usePrefix: true,
   credits: "MD Tohidul Islam",
-  description: "Search for videos on YouTube.",
+  description: "Search and download videos from YouTube.",
   commandCategory: "Media",
-  usages: "[search]",
+  usages: "[search keyword]",
   cooldowns: 5,
   dependencies: {
     "request": "",
     "fs-extra": "",
     "yt-search": "",
-    "node-superfetch": "",
     "axios": ""
   }
 };
@@ -22,23 +22,12 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   const { createReadStream, createWriteStream, unlinkSync, statSync } = global.nodemodule["fs-extra"];
 
   try {
-    // Clean up thumbnail cache files first
-    for(let ii = 1; ii < 7; ii++) {
-      try {
-        unlinkSync(__dirname + `/cache/${ii}.png`);
-        console.log(`[VIDEO] Thumbnail cache deleted: ${ii}.png`);
-      } catch(err) {
-        // File might not exist, ignore error
-      }
-    }
-
     const videoId = handleReply.link[event.body - 1];
     const info = await ytdl.getInfo(videoId);
     let body = info.videoDetails.title;
 
-    const processingMsg = await api.sendMessage(`Processing video... \n-----------\n${body}\n-----------\nPlease Wait !`, event.threadID);
+    const processingMsg = await api.sendMessage(`📥 Processing video...\n-----------\n${body}\n-----------\nPlease Wait!`, event.threadID);
 
-    // Use a simpler filename
     const fileName = `video_${Date.now()}.mp4`;
     const filePath = __dirname + `/cache/${fileName}`;
 
@@ -49,9 +38,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-      },
-      agent: false,
-      debug: false
+      }
     });
 
     stream.pipe(createWriteStream(filePath))
@@ -59,7 +46,6 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
         try {
           const fileSize = statSync(filePath).size;
 
-          // Remove processing message
           if (processingMsg && processingMsg.messageID) {
             api.unsendMessage(processingMsg.messageID);
           }
@@ -74,9 +60,9 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
             }, event.threadID, () => {
               try {
                 unlinkSync(filePath);
-                console.log(`[VIDEO] Cache file deleted: ${fileName}`);
+                console.log(`[VIDEO2] Cache file deleted: ${fileName}`);
               } catch(cleanupErr) {
-                console.log(`[VIDEO] Cache cleanup error: ${cleanupErr.message}`);
+                console.log(`[VIDEO2] Cache cleanup error: ${cleanupErr.message}`);
               }
             }, event.messageID);
           }
@@ -88,12 +74,10 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
       .on("error", (error) => {
         console.log('Stream error:', error);
 
-        // Remove processing message
         if (processingMsg && processingMsg.messageID) {
           api.unsendMessage(processingMsg.messageID);
         }
 
-        // Clean up partial file
         try {
           unlinkSync(filePath);
         } catch(e) {}
@@ -106,16 +90,15 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     api.sendMessage("❌ Unable to process your request! The video may be unavailable or restricted.", event.threadID, event.messageID);
   }
 
-  // Clean up reply handler
   return api.unsendMessage(handleReply.messageID);
 }
 
 module.exports.run = async function({ api, event, args }) {
-  const { request, fs, writeFileSync, unlinkSync, readFileSync } = global.nodemodule["fs-extra"];
+  const { createReadStream, createWriteStream, unlinkSync, statSync } = global.nodemodule["fs-extra"];
   const axios = global.nodemodule["axios"];
   const yts = require("yt-search");
   const ytdl = global.nodemodule["@distube/ytdl-core"];
-  const { createReadStream, createWriteStream, statSync } = global.nodemodule["fs-extra"];
+
   const keyword = args.join(" ");
   if (!keyword) return api.sendMessage("Please enter keywords to search.", event.threadID, event.messageID);
 
@@ -125,7 +108,7 @@ module.exports.run = async function({ api, event, args }) {
 
     if (videos.length === 0) return api.sendMessage("No video found with that keyword.", event.threadID, event.messageID);
 
-    let messageText = "🔎Here are the top 6 videos matching your search:\n";
+    let messageText = "🔎 Here are the top 6 videos matching your search:\n";
     for (let i = 0; i < videos.length; i++) {
       messageText += `\n${i + 1}. ${videos[i].title} (${videos[i].timestamp})`;
     }
@@ -162,24 +145,23 @@ module.exports.run = async function({ api, event, args }) {
       })
     }, event.messageID);
 
-    // Clean up thumbnail cache files immediately after sending
+    // Clean up thumbnail files after sending
     setTimeout(() => {
       for(let ii = 1; ii < 7; ii++) {
         try {
           unlinkSync(__dirname + `/cache/${ii}.png`);
-          console.log(`[VIDEO] Thumbnail cache deleted: ${ii}.png`);
         } catch(err) {
           // File might not exist, ignore error
         }
       }
-    }, 2000); // Clean up after 2 seconds
+    }, 3000);
 
   } catch (error) {
     console.error(error);
     api.sendMessage("An error occurred while searching for videos.", event.threadID, event.messageID);
   }
 
-  // Direct URL handling
+  // Handle direct YouTube URL
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const urlValid = urlRegex.test(args[0]);
 
@@ -188,7 +170,7 @@ module.exports.run = async function({ api, event, args }) {
       var id = args[0].split(/(vi\/|v=|\/v\/|youtu\.be\/|\/embed\/)/);
       (id[2] !== undefined) ? id = id[2].split(/[^0-9a-z_\-]/i)[0] : id = id[0];
 
-      const processingMsg = await api.sendMessage("⏳ Processing video... Please wait!", event.threadID);
+      const processingMsg = await api.sendMessage("📥 Processing video... Please wait!", event.threadID);
 
       const fileName = `video_${Date.now()}.mp4`;
       const filePath = __dirname + `/cache/${fileName}`;
@@ -200,9 +182,7 @@ module.exports.run = async function({ api, event, args }) {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
           }
-        },
-        agent: false,
-        debug: false
+        }
       });
 
       stream.pipe(createWriteStream(filePath))
@@ -210,7 +190,6 @@ module.exports.run = async function({ api, event, args }) {
           try {
             const fileSize = statSync(filePath).size;
 
-            // Remove processing message
             if (processingMsg && processingMsg.messageID) {
               api.unsendMessage(processingMsg.messageID);
             }
@@ -225,9 +204,9 @@ module.exports.run = async function({ api, event, args }) {
               }, event.threadID, () => {
                 try {
                   unlinkSync(filePath);
-                  console.log(`[VIDEO] Cache file deleted: ${fileName}`);
+                  console.log(`[VIDEO2] Cache file deleted: ${fileName}`);
                 } catch(cleanupErr) {
-                  console.log(`[VIDEO] Cache cleanup error: ${cleanupErr.message}`);
+                  console.log(`[VIDEO2] Cache cleanup error: ${cleanupErr.message}`);
                 }
               }, event.messageID);
             }
@@ -239,12 +218,10 @@ module.exports.run = async function({ api, event, args }) {
         .on("error", (error) => {
           console.log('Stream error:', error);
 
-          // Remove processing message
           if (processingMsg && processingMsg.messageID) {
             api.unsendMessage(processingMsg.messageID);
           }
 
-          // Clean up partial file
           try {
             unlinkSync(filePath);
           } catch(e) {}
