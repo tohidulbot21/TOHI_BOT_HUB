@@ -164,23 +164,19 @@ async function getUserName(userId) {
     const usersData = await getUsersData();
     const bankData = await getBankData();
     
-    // Try to get name from bank data first, then from users data
-    if (bankData.users[userId]?.name) {
+    // Try to get name from bank data first (if exists and not undefined/null)
+    if (bankData.users[userId]?.name && bankData.users[userId].name !== 'undefined' && bankData.users[userId].name.trim()) {
       return bankData.users[userId].name;
     }
     
-    // If not in bank data, try to extract from nested user data structure
-    const userData = usersData[userId];
-    if (userData) {
-      // Check various possible name fields in the nested structure
-      if (userData.name) return userData.name;
-      if (userData.data?.name) return userData.data.name;
-    }
+    // If not in bank data or is undefined, try to get from Facebook API via Users module
+    // This would require the Users module to be passed in, but for now we'll try other sources
     
-    return `User-${userId.slice(-6)}`;
+    // For fallback, create a readable name from user ID
+    return `User${userId.slice(-6)}`;
   } catch (error) {
     console.log(`[BANK-API] Error getting user name for ${userId}: ${error.message}`);
-    return `User-${userId.slice(-6)}`;
+    return `User${userId.slice(-6)}`;
   }
 }
 
@@ -250,9 +246,14 @@ app.get('/bank/register', async (req, res) => {
     // Get current money from users data
     const currentMoney = await getUserMoney(senderID);
 
-    // Store bank-specific data
+    // Store bank-specific data with proper name handling
+    const decodedName = decodeURI(name);
+    const finalName = (decodedName && decodedName !== 'undefined' && decodedName.trim()) 
+      ? decodedName 
+      : `User${senderID.slice(-6)}`;
+      
     bankData.users[senderID] = {
-      name: decodeURI(name),
+      name: finalName,
       STK: accountNumber,
       password: password,
       createTime: new Date().toISOString()

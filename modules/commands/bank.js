@@ -102,13 +102,20 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         case 'register':
         case '-r':
         case 'r': {
-            const res = await makeApiCall('/register', {
-              senderID: senderID,
-              name: encodeURI((await Users.getData(senderID)).name)
-            });
-            if(res.status == false) return api.sendMessage(res.message, threadID, messageID);
-            api.sendMessage('Your bank password is: ' + res.message.password, senderID);
-            return api.sendMessage(`=== [ ${res.message.noti} ] ===\n👤 Account holder: ${res.message.name}\n💳 Account Number: ${res.message.STK}\n💰 Balance: ${res.message.money}\n🔐  Password: sent to your private messages, please check your inbox (or spam)`, threadID, messageID)
+            try {
+              const userData = await Users.getData(senderID);
+              const userName = userData.name || `User${senderID.slice(-6)}`;
+              
+              const res = await makeApiCall('/register', {
+                senderID: senderID,
+                name: encodeURI(userName)
+              });
+              if(res.status == false) return api.sendMessage(res.message, threadID, messageID);
+              api.sendMessage('Your bank password is: ' + res.message.password, senderID);
+              return api.sendMessage(`=== [ ${res.message.noti} ] ===\n👤 Account holder: ${res.message.name}\n💳 Account Number: ${res.message.STK}\n💰 Balance: ${res.message.money}$\n🔐  Password: sent to your private messages, please check your inbox (or spam)`, threadID, messageID)
+            } catch (error) {
+              return api.sendMessage('❌ Registration failed. Please try again.', threadID, messageID);
+            }
         }
         case "find":
         case "-f": {
@@ -153,13 +160,23 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         }
         case 'top':
         case '-t':{
-            if(checkBank.status == false) return api.sendMessage("You don't have a bank account yet!", threadID, messageID);
+            if(checkBank.status == false) return api.sendMessage("❌ You don't have a bank account yet! Use `/bank register` to create one.", threadID, messageID);
             const res = await makeApiCall('/top');
-            if(res.status == false) return api.sendMessage('No data currently available!', threadID, messageID);
-            var msg = res.message + '\n'
+            if(res.status == false) return api.sendMessage('❌ No ranking data currently available!', threadID, messageID);
+            
+            let msg = `🏆 ${res.message}\n\n`;
+            let emojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+            
             for (let i of res.ranking) {
-                msg += `${i.rank}. ${i.name} \n» 💰 Balance: ${i.money}$\n===========\n`
+                let rankEmoji = emojis[i.rank - 1] || `${i.rank}️⃣`;
+                let displayName = i.name || `User${i.rank}`;
+                
+                msg += `${rankEmoji} ${displayName}\n`;
+                msg += `💰 Balance: $${i.money.toLocaleString()}\n`;
+                msg += `━━━━━━━━━━━━━━━━━━━━\n`;
             }
+            
+            msg += `\n💡 Use "/bank register" to join the ranking!`;
             return api.sendMessage(msg, threadID, messageID);
         }
         case 'pay':
@@ -239,11 +256,43 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
             }
         }
         default: {
-            const picture = (await axios.get(`https://i.imgur.com/5hkQ2CC.jpg`, { responseType: "stream"})).data
-            return api.sendMessage({
-                body: `=== 「 BANK SYSTEM 」 ===\n--------\n» register » Register a new account\n» info » View your account info\n» find » Find a bank account\n» get » Withdraw money\n» top » View top users\n» pay » Transfer money\n» send » Deposit money to your account\n» pw » Retrieve or change your password\n---------`,
-                attachment: (picture)
-            }, threadID, messageID);
+            let helpText = `🏦 === BANK SYSTEM HELP === 🏦\n\n`;
+            helpText += `📋 ACCOUNT MANAGEMENT:\n`;
+            helpText += `• /bank register - Register a new bank account\n`;
+            helpText += `• /bank info - View your account details\n`;
+            helpText += `• /bank find stk <account_number> - Find account by number\n`;
+            helpText += `• /bank find id <user_id> - Find account by user ID\n\n`;
+            
+            helpText += `💰 MONEY OPERATIONS:\n`;
+            helpText += `• /bank send <amount> - Deposit money from wallet to bank\n`;
+            helpText += `• /bank get <amount> - Withdraw money from bank to wallet\n`;
+            helpText += `• /bank pay stk <account_number> <amount> - Transfer to account\n`;
+            helpText += `• /bank pay id <user_id> <amount> - Transfer to user ID\n\n`;
+            
+            helpText += `🔐 SECURITY:\n`;
+            helpText += `• /bank pw get - Get your current password\n`;
+            helpText += `• /bank pw new - Set a new password\n\n`;
+            
+            helpText += `📊 RANKINGS:\n`;
+            helpText += `• /bank top - View richest users ranking\n\n`;
+            
+            helpText += `💡 TIPS:\n`;
+            helpText += `- All transfers require your bank password\n`;
+            helpText += `- Keep your password safe and private\n`;
+            helpText += `- Minimum transfer amount is $1\n`;
+            helpText += `- Bank balance is separate from wallet balance\n\n`;
+            
+            helpText += `━━━━━━━━━━━━━━━━━━━━━━━━━`;
+            
+            try {
+                const picture = (await axios.get(`https://i.imgur.com/5hkQ2CC.jpg`, { responseType: "stream"})).data
+                return api.sendMessage({
+                    body: helpText,
+                    attachment: picture
+                }, threadID, messageID);
+            } catch (error) {
+                return api.sendMessage(helpText, threadID, messageID);
+            }
         }
     }
   } catch (error) {
