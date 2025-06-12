@@ -114,7 +114,7 @@ module.exports = function ({ api }) {
     // Simplified approval system
     const isAdmin = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
     const threadID = String(event.threadID);
-    
+
     // Load config once per event
     let config = {};
     try {
@@ -137,7 +137,7 @@ module.exports = function ({ api }) {
       if (isRejected && !isAdmin) {
         return; // Block rejected groups
       }
-      
+
       // Allow all other groups
     }
 

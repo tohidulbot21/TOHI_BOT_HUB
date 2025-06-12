@@ -489,6 +489,9 @@ function levenshteinDistance(str1, str2) {
       };
 
       if (command && typeof command.run === "function") {
+        // Debug log for command execution
+        logger.log(`Attempting to execute command: ${command.config.name}`, "DEBUG");
+        
         // Set activeCmd to prevent concurrent execution
         activeCmd = true;
 
@@ -532,8 +535,13 @@ function levenshteinDistance(str1, str2) {
 
           logger.log(`Command "${command.config.name}" used by ${userName}`, "COMMAND");
 
-          // Execute command without timeout
-          await command.run(Obj);
+          // Execute command with extended timeout (60 seconds for heavy commands)
+          const commandPromise = command.run(Obj);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Command took too long to execute')), 60000)
+          );
+          
+          await Promise.race([commandPromise, timeoutPromise]);
 
           // Set cooldown only after successful execution
           if (timestamps && timestamps instanceof Map) {
@@ -550,27 +558,29 @@ function levenshteinDistance(str1, str2) {
       // Reset activeCmd on error
       activeCmd = false;
 
-      // Enhanced error handling
+      // Enhanced error handling with better debugging
       if (e.code === 'ENOENT' && e.path && e.path.includes('cache')) {
         // File not found in cache - ignore these errors
         logger.log(`Cache file not found (ignored): ${e.path}`, "DEBUG");
-
-      } else if (!shouldIgnoreError(e)) {
+      } else {
+        // Log all command errors for debugging
         logger.log(`Command error in "${command?.config?.name || commandName}": ${e.message}`, "ERROR");
+        console.error(`Full error details:`, e);
 
-        // Only send error message for critical errors
-        if (!e.message.includes('rate limit') && 
-            !e.message.includes('timeout') && 
-            !e.message.includes('spam') &&
-            !e.message.includes('blocked')) {
+        // Send error message to help users understand what went wrong
+        if (!shouldIgnoreError(e)) {
           try {
-            api.sendMessage(
-              `❌ Error executing command. Please try again later.`,
-              threadID,
-              messageID
-            );
+            // Send a helpful error message instead of generic one
+            const errorMsg = `❌ Error in ${command?.config?.name || commandName} command: ${e.message}\n\n🔧 Please try again or contact admin if the issue persists.\n🚩 Made by TOHIDUL`;
+            api.sendMessage(errorMsg, threadID, messageID);
           } catch (sendError) {
-            // Silent fail if can't send error message
+            // If can't send detailed error, try simple message
+            try {
+              api.sendMessage(`❌ Command failed. Please try again.`, threadID, messageID);
+            } catch (finalError) {
+              // Silent fail as last resort
+              logger.log(`Failed to send error message: ${finalError.message}`, "ERROR");
+            }
           }
         }
       }
@@ -619,15 +629,18 @@ function levenshteinDistance(str1, str2) {
           }).join('\n')}`;
         }
 
-        const errorMessage = `❌ This command not exist please try another!${suggestionText}\n\n📝 Type ${PREFIX}help to see all available commands.\n\n🚩 Made by TOHIDUL`;
+        const errorMessage = `❌ এই কমান্ডটি খুঁজে পাওয়া যায়নি!${suggestionText}\n\n📝 সব কমান্ড দেখতে টাইপ করুন: ${PREFIX}help\n🔧 সাহায্যের জন্য: ${PREFIX}admin\n\n🚩 Made by TOHIDUL`;
 
-        // Use rate limited sending for suggestion messages
+        // Send command not found message directly
         try {
-          const rateLimitManager = require('../../utils/rateLimitManager');
-          return await rateLimitManager.queueMessage(api, threadID, errorMessage, { replyTo: messageID });
+          api.sendMessage(errorMessage, threadID, messageID);
         } catch (sendError) {
-          // Silent fail for suggestion messages
-          logger.log(`Failed to send suggestion message: ${sendError.message}`, "DEBUG");
+          // Try fallback message if detailed message fails
+          try {
+            api.sendMessage(`❌ Invalid command. Type ${PREFIX}help for available commands.`, threadID, messageID);
+          } catch (finalError) {
+            logger.log(`Failed to send command not found message: ${finalError.message}`, "DEBUG");
+          }
         }
       }
       return; // No prefix, just ignore
