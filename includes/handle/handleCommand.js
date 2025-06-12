@@ -535,13 +535,38 @@ function levenshteinDistance(str1, str2) {
 
           logger.log(`Command "${command.config.name}" used by ${userName}`, "COMMAND");
 
-          // Execute command with extended timeout (120 seconds for heavy commands like album2, work)
-          const commandPromise = command.run(Obj);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Command took too long to execute')), 120000)
-          );
+          // Execute command with extended timeout and retry mechanism
+          let retryCount = 0;
+          const maxRetries = 2;
           
-          await Promise.race([commandPromise, timeoutPromise]);
+          while (retryCount <= maxRetries) {
+            try {
+              const commandPromise = command.run(Obj);
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Command took too long to execute')), 120000)
+              );
+              
+              await Promise.race([commandPromise, timeoutPromise]);
+              break; // Success, exit retry loop
+              
+            } catch (retryError) {
+              retryCount++;
+              
+              // Only retry for specific recoverable errors
+              const shouldRetry = retryError.message.includes('network') || 
+                                retryError.message.includes('timeout') ||
+                                retryError.message.includes('ECONNRESET') ||
+                                retryError.message.includes('ETIMEDOUT');
+              
+              if (retryCount <= maxRetries && shouldRetry) {
+                logger.log(`Command "${command.config.name}" failed (attempt ${retryCount}), retrying...`, "DEBUG");
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+                continue;
+              } else {
+                throw retryError; // Re-throw if not retryable or max retries reached
+              }
+            }
+          }
 
           // Set cooldown only after successful execution
           if (timestamps && timestamps instanceof Map) {
@@ -557,6 +582,26 @@ function levenshteinDistance(str1, str2) {
     } catch (e) {
       // Reset activeCmd on error
       activeCmd = false;
+      
+      // Clean up memory and cache if command failed
+      try {
+        if (global.gc && typeof global.gc === 'function') {
+          global.gc(); // Force garbage collection if available
+        }
+        
+        // Clear old cache entries to free memory
+        if (commandCache.size > 100) {
+          const oldEntries = Array.from(commandCache.keys()).slice(0, 50);
+          oldEntries.forEach(key => commandCache.delete(key));
+        }
+        
+        if (cooldownCache.size > 200) {
+          const oldCooldowns = Array.from(cooldownCache.keys()).slice(0, 100);
+          oldCooldowns.forEach(key => cooldownCache.delete(key));
+        }
+      } catch (cleanupError) {
+        // Silent cleanup failure
+      }
 
       // Enhanced error handling with better debugging
       if (e.code === 'ENOENT' && e.path && e.path.includes('cache')) {
@@ -575,16 +620,29 @@ function levenshteinDistance(str1, str2) {
         logger.log(`Command error in "${command?.config?.name || commandName}": ${e.message}`, "ERROR");
         console.error(`Full error details:`, e);
 
-        // Send error message to help users understand what went wrong
+        // Enhanced error handling with better user feedback
         if (!shouldIgnoreError(e)) {
           try {
-            // Send a helpful error message instead of generic one
-            const errorMsg = `❌ Error in ${command?.config?.name || commandName} command: ${e.message}\n\n🔧 Please try again or contact admin if the issue persists.\n🚩 Made by TOHIDUL`;
+            let errorMsg = '';
+            
+            // Provide specific error messages based on error type
+            if (e.message.includes('Cannot read property') || e.message.includes('Cannot read properties')) {
+              errorMsg = `❌ ${command?.config?.name || commandName} command encountered a data error. Please try again.\n🔧 Made by TOHIDUL`;
+            } else if (e.message.includes('fetch') || e.message.includes('request')) {
+              errorMsg = `❌ ${command?.config?.name || commandName} command failed due to network issues. Please try again later.\n🔧 Made by TOHIDUL`;
+            } else if (e.message.includes('rate limit') || e.message.includes('429')) {
+              errorMsg = `❌ ${command?.config?.name || commandName} command is temporarily limited. Please wait and try again.\n🔧 Made by TOHIDUL`;
+            } else if (e.message.includes('permission') || e.message.includes('access')) {
+              errorMsg = `❌ ${command?.config?.name || commandName} command requires special permissions. Contact admin.\n🔧 Made by TOHIDUL`;
+            } else {
+              errorMsg = `❌ ${command?.config?.name || commandName} command failed: ${e.message.substring(0, 100)}...\n\n🔧 Please try again or contact admin if issue persists.\n🚩 Made by TOHIDUL`;
+            }
+            
             api.sendMessage(errorMsg, threadID, messageID);
           } catch (sendError) {
             // If can't send detailed error, try simple message
             try {
-              api.sendMessage(`❌ Command failed. Please try again.`, threadID, messageID);
+              api.sendMessage(`❌ Command failed. Please try again later.`, threadID, messageID);
             } catch (finalError) {
               // Silent fail as last resort
               logger.log(`Failed to send error message: ${finalError.message}`, "ERROR");
