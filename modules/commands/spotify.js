@@ -86,6 +86,6 @@ run: async function({ api, event, args, getText }) {
   } catch (error) {
     console.error("Spotify command error:", error);
     api.sendMessage(`❌ Error: ${error.message}`, event.threadID, event.messageID);
-  }D, events.messageID);
-} 
+  }
+}
 }
