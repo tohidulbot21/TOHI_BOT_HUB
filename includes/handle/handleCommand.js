@@ -29,8 +29,8 @@ function shouldIgnoreError(error) {
     return true;
   }
 
-  // Network timeout errors
-  if (errorStr.includes('timeout') || errorStr.includes('network')) {
+  // Network timeout errors and command execution timeouts
+  if (errorStr.includes('timeout') || errorStr.includes('network') || errorStr.includes('took too long to execute')) {
     return true;
   }
 
@@ -535,10 +535,10 @@ function levenshteinDistance(str1, str2) {
 
           logger.log(`Command "${command.config.name}" used by ${userName}`, "COMMAND");
 
-          // Execute command with extended timeout (60 seconds for heavy commands)
+          // Execute command with extended timeout (120 seconds for heavy commands like album2, work)
           const commandPromise = command.run(Obj);
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Command took too long to execute')), 60000)
+            setTimeout(() => reject(new Error('Command took too long to execute')), 120000)
           );
           
           await Promise.race([commandPromise, timeoutPromise]);
@@ -562,8 +562,16 @@ function levenshteinDistance(str1, str2) {
       if (e.code === 'ENOENT' && e.path && e.path.includes('cache')) {
         // File not found in cache - ignore these errors
         logger.log(`Cache file not found (ignored): ${e.path}`, "DEBUG");
+      } else if (e.message === 'Command took too long to execute') {
+        // Handle timeout errors specifically
+        logger.log(`Command timeout in "${command?.config?.name || commandName}": Command exceeded timeout limit`, "ERROR");
+        console.error(`Full error details:`, e);
+
+        // Don't send error message for timeout - just log it
+        // Heavy commands like album2, work might take time due to external API calls
+        logger.log(`Command "${command?.config?.name || commandName}" timed out - this may be due to slow external APIs`, "DEBUG");
       } else {
-        // Log all command errors for debugging
+        // Log all other command errors for debugging
         logger.log(`Command error in "${command?.config?.name || commandName}": ${e.message}`, "ERROR");
         console.error(`Full error details:`, e);
 
