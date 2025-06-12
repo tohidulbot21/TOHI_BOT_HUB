@@ -64,9 +64,15 @@ process.on('unhandledRejection', (reason, promise) => {
     reason.toString().includes('ENOENT') ||
     reason.toString().includes('rate limit') ||
     reason.toString().includes('1357031') ||
-    reason.toString().includes('1390008')
+    reason.toString().includes('1390008') ||
+    reason.toString().includes('Request failed with status code 401') ||
+    reason.toString().includes('Request failed with status code 404') ||
+    reason.toString().includes('Request failed with status code 500') ||
+    reason.message?.includes('status code 401') ||
+    reason.message?.includes('status code 404') ||
+    reason.message?.includes('status code 500')
   )) {
-    // Ignore common Facebook API and file system errors
+    // Ignore common Facebook API, file system, and external API errors
     return;
   }
   logger.log(`Unhandled Rejection: ${reason}`, "ERROR");
