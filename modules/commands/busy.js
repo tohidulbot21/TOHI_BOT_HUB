@@ -1,99 +1,81 @@
+module.exports.config = {
+  name: "busy",
+  version: "1.0.0",
+  hasPermssion: 0,
+  credits: "TOHI-BOT-HUB",
+  description: "Set busy mode to auto-reply when mentioned",
+  commandCategory: "System",
+  usages: "[reason] or off",
+  cooldowns: 3,
+  usePrefix: true
+};
 
-module.exports = {
-  config: {
-    name: "busy",
-    version: "2.0.0",
-    hasPermssion: 0,
-    usePrefix: true,
-    credits: "TOHI-BOT-HUB",
-    description: "🚫 Do not disturb mode - Bot will notify when you're tagged",
-    commandCategory: "utility",
-    cooldowns: 5,
-    usages: "[reason] or off",
-    handleEvent: true
-  },
+module.exports.run = async function({ api, event, args, Users }) {
+  const { senderID, threadID, messageID } = event;
 
-  run: async function ({ api, event, args, Users, getLang }) {
-    const { senderID, threadID, messageID } = event;
-    
-    try {
-      // Check if user wants to turn off busy mode
-      if (args[0] && args[0].toLowerCase() === "off") {
-        const userData = await Users.getData(senderID);
-        if (userData.data && userData.data.busy !== undefined) {
-          delete userData.data.busy;
-          await Users.setData(senderID, userData);
-          
-          return api.sendMessage(
-            `🔓 Busy Mode বন্ধ হয়েছে!`,
-            threadID, messageID
-          );
-        } else {
-          return api.sendMessage(
-            `❌ Busy Mode আগে থেকেই বন্ধ আছে\n💡 চালু করতে: /busy [কারণ]`,
-            threadID, messageID
-          );
-        }
-      }
+  try {
+    const userData = await Users.getData(senderID);
 
-      // Get the reason for being busy
-      const reason = args.join(" ") || "";
-      
-      // Set busy mode
-      const userData = await Users.getData(senderID);
-      if (!userData.data) userData.data = {};
-      userData.data.busy = reason || true;
+    if (args[0] && args[0].toLowerCase() === "off") {
+      // Turn off busy mode
+      userData.data.busy = false;
       await Users.setData(senderID, userData);
 
-      // Get user info for response with fallback
-      let userName = `User-${senderID.slice(-6)}`;
-      try {
-        const userInfo = await api.getUserInfo(senderID);
-        if (userInfo && userInfo[senderID] && userInfo[senderID].name) {
-          userName = userInfo[senderID].name;
-        }
-      } catch (userInfoError) {
-        // Use fallback name if getUserInfo fails
-      }
-
-      const successMessage = reason ? 
-        `✅ Busy Mode চালু হয়েছে\n📝 কারণ: ${reason}\n🔓 বন্ধ করতে: /busy off`
-        :
-        `✅ Busy Mode চালু হয়েছে\n🔓 বন্ধ করতে: /busy off`;
-
-      return api.sendMessage(successMessage, threadID, messageID);
-
-    } catch (error) {
-      console.error('[BUSY] Command error:', error);
-      return api.sendMessage(
-        `❌ System Error\n\n` +
-        `🔧 Busy মোড সেট করতে সমস্যা হয়েছে।\n` +
-        `💡 আবার চেষ্টা করুন।\n\n` +
-        `🚩 Made by TOHIDUL`,
-        threadID, messageID
-      );
+      return api.sendMessage("✅ Busy Mode বন্ধ হয়েছে", threadID, messageID);
     }
-  },
 
-  // Handle when someone mentions a busy user
-  handleEvent: async function ({ api, event, Users }) {
-    const { mentions, threadID, messageID, senderID } = event;
+    // Turn on busy mode
+    const reason = args.join(" ");
+    userData.data.busy = reason || true;
+    await Users.setData(senderID, userData);
 
-    // Only process message events with mentions
-    if (event.type !== "message" || !mentions || Object.keys(mentions).length === 0) return;
-
+    // Get user name with fallback
+    let userName = `User-${senderID.slice(-6)}`;
     try {
-      // Check each mentioned user
-      for (const [userID, mentionText] of Object.entries(mentions)) {
-        // Skip if mentioning themselves
-        if (userID === senderID) continue;
-        
+      const userInfo = await api.getUserInfo(senderID);
+      if (userInfo && userInfo[senderID] && userInfo[senderID].name) {
+        userName = userInfo[senderID].name;
+      }
+    } catch (userInfoError) {
+      // Use fallback name if getUserInfo fails
+    }
+
+    const successMessage = reason ? 
+      `✅ Busy Mode চালু হয়েছে\n📝 কারণ: ${reason}\n🔓 বন্ধ করতে: /busy off`
+      : `✅ Busy Mode চালু হয়েছে\n🔓 বন্ধ করতে: /busy off`;
+
+    return api.sendMessage(successMessage, threadID, messageID);
+
+  } catch (error) {
+    console.error("Busy command error:", error);
+    return api.sendMessage("❌ Error setting busy mode", threadID, messageID);
+  }
+};
+
+module.exports.handleEvent = async function({ api, event, Users }) {
+  const { type, body, senderID, threadID, mentions } = event;
+
+  if (type !== "message" && type !== "message_reply") return;
+
+  try {
+    // Check if bot is mentioned
+    const botID = api.getCurrentUserID();
+    const isMentioned = mentions && Object.keys(mentions).includes(botID);
+
+    if (!isMentioned) return;
+
+    // Get mentioned user's data
+    const mentionedUsers = Object.keys(mentions);
+
+    for (const userID of mentionedUsers) {
+      if (userID === botID) continue; // Skip bot itself
+
+      try {
         const userData = await Users.getData(userID);
-        
-        // Check if user is in busy mode
-        if (userData.data && userData.data.busy !== undefined) {
+
+        if (userData.data && userData.data.busy) {
           let userName = `User-${userID.slice(-6)}`;
-          
+
           try {
             // Try to get user name with better error handling
             const userInfo = await api.getUserInfo(userID);
@@ -101,32 +83,22 @@ module.exports = {
               userName = userInfo[userID].name;
             }
           } catch (userInfoError) {
-            // Use fallback name if getUserInfo fails
+            // Silent fallback to default name
           }
 
-          const busyReason = userData.data.busy;
+          const busyReason = typeof userData.data.busy === "string" ? userData.data.busy : "Busy";
+          const busyMessage = `🔴 ${userName} এখন Busy আছে\n📝 কারণ: ${busyReason}`;
 
-          // Create busy notification message
-          let busyMessage;
-          if (typeof busyReason === 'string' && busyReason.trim()) {
-            busyMessage = `🚫 ${userName} ব্যস্ত আছেন\n📝 কারণ: ${busyReason}`;
-          } else {
-            busyMessage = `🚫 ${userName} ব্যস্ত আছেন\n📝 কোনো কারণ উল্লেখ করা হয়নি`;
-          }
-
-          // Send the busy notification
-          try {
-            await api.sendMessage(busyMessage, threadID);
-          } catch (sendError) {
-            // Silent fail for sending busy notifications
-          }
-          
-          // Only send one notification per message
-          break;
+          api.sendMessage(busyMessage, threadID);
+          break; // Only send one busy message per event
         }
+      } catch (userDataError) {
+        // Skip this user if data can't be retrieved
+        continue;
       }
-    } catch (error) {
-      // Silent error handling for event functions
     }
+  } catch (error) {
+    // Silent error handling for handleEvent
+    console.error("Busy handleEvent error:", error);
   }
 };

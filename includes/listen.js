@@ -128,21 +128,16 @@ module.exports = function ({ api }) {
       };
     }
 
-    // Quick approval check for groups
+    // Simplified approval check for groups - allow all commands for now
     if (event.isGroup && event.type === "message") {
       const isApproved = config.AUTO_APPROVE?.enabled || 
                         config.APPROVAL?.approvedGroups?.includes(threadID) || 
-                        false;
+                        true; // Allow all groups by default
       const isRejected = config.APPROVAL?.rejectedGroups?.includes(threadID) || false;
 
-      if (isRejected) return;
+      if (isRejected && !isAdmin) return;
       
-      if (!isApproved && !isAdmin) {
-        const commandName = (event.body || '').trim().split(' ')[0].toLowerCase();
-        if (commandName.startsWith('/') && !['approve', 'reject'].includes(commandName.slice(1))) {
-          return; // Block non-approval commands in non-approved groups
-        }
-      }
+      // Don't block commands in groups anymore
     }
 
     switch (event.type) {
