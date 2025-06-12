@@ -144,3 +144,34 @@ module.exports.run = function ({ api, event, args, getText }) {
         }
     }, messageID);
 };
+if (args[0]) {
+    const commandName = args[0].toLowerCase();
+    const command = commands.get(commandName) || commands.get(aliases.get(commandName));
+
+    if (!command) {
+      return api.sendMessage(getText("moduleInfo", "commandNotFound", commandName), threadID, messageID);
+    }
+
+    const { config } = command;
+    let helpText = `╔══════════════════╗\n`;
+    helpText += `   📋 ${config.name.toUpperCase()} COMMAND INFO\n`;
+    helpText += `╚══════════════════╝\n\n`;
+    helpText += `📌 Name: ${config.name}\n`;
+    helpText += `📝 Description: ${config.description || "No description"}\n`;
+    helpText += `📂 Category: ${config.commandCategory || "Unknown"}\n`;
+    helpText += `💡 Usage: ${prefix}${config.name} ${config.usages || ""}\n`;
+    helpText += `⏰ Cooldown: ${config.cooldowns || 0} seconds\n`;
+    helpText += `🔐 Permission: ${config.hasPermssion === 0 ? "User" : config.hasPermssion === 1 ? "Admin" : "Bot Admin"}\n`;
+    helpText += `✨ Credits: ${config.credits || "Unknown"}\n`;
+    helpText += `🔧 Version: ${config.version || "1.0.0"}\n`;
+
+    // Add special examples for age commands
+    if (commandName === "age" || commandName === "age2") {
+      helpText += `\n📖 Examples:\n`;
+      helpText += `• ${prefix}${config.name} 12/10/2000\n`;
+      helpText += `• ${prefix}${config.name} 25/12/1995\n`;
+      helpText += `\n⚠️ Format: DD/MM/YYYY`;
+    }
+
+    return api.sendMessage(helpText, threadID, messageID);
+  }
