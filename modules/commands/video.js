@@ -1,5 +1,5 @@
 module.exports.config = {
-  name: "video2",
+  name: "video",
   version: "1.0.0",
   hasPermssion: 0,
   usePrefix: true,
