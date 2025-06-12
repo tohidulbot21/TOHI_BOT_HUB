@@ -45,7 +45,7 @@ module.exports = function ({ api }) {
                 const globalErrorHandler = require('../../utils/globalErrorHandler');
                 const userInfo = await globalErrorHandler.rateLimitedGetUserInfo(api, userID);
                 
-                if (userInfo[userID]?.name && userInfo[userID].name.trim()) {
+                if (userInfo && userInfo[userID]?.name && userInfo[userID].name.trim()) {
                     const name = userInfo[userID].name.trim();
                     
                     // Cache the name in our database

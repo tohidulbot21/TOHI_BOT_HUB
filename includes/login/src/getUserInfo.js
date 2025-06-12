@@ -180,6 +180,32 @@ module.exports = function (defaultFuncs, api, ctx) {
 					.post("https://www.facebook.com/chat/user_info/", ctx.jar, form)
 					.then(utils.parseAndCheckLogin(ctx, defaultFuncs));
 
+				// Handle null response
+				if (!response || response === null) {
+					console.log(`[getUserInfo] Received null response for users: ${batchedIds.join(', ')}`);
+					
+					// Return fallback data for null response
+					const fallbackData = {};
+					batchedIds.forEach(userId => {
+						const shortId = userId.slice(-6);
+						fallbackData[userId] = {
+							name: `User_${shortId}`,
+							firstName: `User_${shortId}`,
+							vanity: "",
+							thumbSrc: `https://graph.facebook.com/${userId}/picture?type=large`,
+							profileUrl: `https://facebook.com/${userId}`,
+							gender: 0,
+							type: "user",
+							isFriend: false,
+							isBirthday: false,
+							searchTokens: [],
+							alternateName: ""
+						};
+					});
+
+					return callback(null, { ...cachedResults, ...fallbackData });
+				}
+
 				// Handle rate limiting errors
 				if (response.error) {
 					if (response.error === 3252001) {
