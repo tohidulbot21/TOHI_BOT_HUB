@@ -143,6 +143,67 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         userActivity.set(senderID, now);
       }
 
+      // Create fallback getText function that works without language keys
+      const fallbackGetText = (key, ...args) => {
+        try {
+          // Try to use global getText first
+          if (global.getText && typeof global.getText === 'function') {
+            const result = global.getText(key, ...args);
+            if (result && result !== key) {
+              return result;
+            }
+          }
+        } catch (e) {
+          // Ignore getText errors
+        }
+
+        // Fallback messages for common keys
+        const fallbackMessages = {
+          "moduleInfo": `
+╔═────── ★ ★ ─────═╗
+        💫 TOHI-BOT MODULE INFO 💫
+╚═────── ★ ★ ─────═╝
+🔹 Name         : %1
+🔸 Usage        : %3
+📝 Description   : %2
+🌈 Category     : %4
+⏳ Cooldown     : %5s
+🔑 Permission   : %6
+
+⚡️ Made by TOHIDUL | TOHI-BOT ⚡️`,
+          "helpList": `✨ TOHI-BOT has %1 commands available!
+🔍 TIP: Type %2help [command name] for details!`,
+          "user": "User",
+          "adminGroup": "Admin Group",
+          "adminBot": "Admin Bot",
+          "on": "on",
+          "off": "off",
+          "successText": "Success!",
+          "error": "An error occurred",
+          "missingInput": "Please provide required input",
+          "noPermission": "You don't have permission to use this command",
+          "cooldown": "Please wait before using this command again",
+          "levelup": "Congratulations {name}, you leveled up to level {level}!",
+          "reason": "Reason",
+          "at": "at",
+          "banSuccess": "User banned successfully",
+          "unbanSuccess": "User unbanned successfully"
+        };
+
+        // If we have a fallback message, format it with args
+        if (fallbackMessages[key]) {
+          let message = fallbackMessages[key];
+          for (let i = 0; i < args.length; i++) {
+            message = message.replace(new RegExp(`%${i + 1}`, 'g'), args[i] || '');
+            message = message.replace(new RegExp(`\\{${i + 1}\\}`, 'g'), args[i] || '');
+          }
+          return message;
+        }
+
+        // If no fallback found, return a generic message
+        return key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+      };
+
       // Create enhanced run object
       const Obj = {
         api,
@@ -152,7 +213,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         Threads,
         Currencies,
         permssion: config.permission || 0,
-        getText: global.getText,
+        getText: fallbackGetText,
         logger
       };
 

@@ -17,15 +17,48 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
               Threads, 
               Currencies,
               logger,
-              getText: (key) => {
-                // Provide a fallback getText function
+              getText: (key, ...args) => {
+                try {
+                  // Try to use global getText first
+                  if (global.getText && typeof global.getText === 'function') {
+                    const result = global.getText(key, ...args);
+                    if (result && result !== key) {
+                      return result;
+                    }
+                  }
+                } catch (e) {
+                  // Ignore getText errors
+                }
+
+                // Enhanced fallback messages
                 const fallbackMessages = {
                   "levelup": "Congratulations {name}, being talkative helped you level up to level {level}!",
                   "on": "on",
                   "off": "off",
-                  "successText": "success notification rankup!"
+                  "successText": "Success notification!",
+                  "user": "User",
+                  "adminGroup": "Admin Group", 
+                  "adminBot": "Admin Bot",
+                  "moduleInfo": "Module: %1 | Usage: %3 | Description: %2",
+                  "error": "An error occurred",
+                  "noPermission": "No permission",
+                  "cooldown": "Please wait"
                 };
-                return fallbackMessages[key] || `Message for ${key}`;
+
+                // Format message with arguments
+                if (fallbackMessages[key]) {
+                  let message = fallbackMessages[key];
+                  for (let i = 0; i < args.length; i++) {
+                    message = message.replace(new RegExp(`%${i + 1}`, 'g'), args[i] || '');
+                    message = message.replace(new RegExp(`\\{${i + 1}\\}`, 'g'), args[i] || '');
+                    message = message.replace(new RegExp(`\\{name\\}`, 'g'), args[0] || 'User');
+                    message = message.replace(new RegExp(`\\{level\\}`, 'g'), args[1] || '1');
+                  }
+                  return message;
+                }
+
+                // Return formatted key if no fallback found
+                return key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
               }
             };
 
