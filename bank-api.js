@@ -1,3 +1,4 @@
+
 const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
@@ -6,14 +7,14 @@ const app = express();
 // Rate limiting with more lenient limits for local use
 const rateLimit = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const RATE_LIMIT_MAX = 200; // Increased to 200 requests per minute
+const RATE_LIMIT_MAX = 500; // Increased to 500 requests per minute for local use
 
 function rateLimitMiddleware(req, res, next) {
   const clientId = req.ip || req.connection.remoteAddress || 'localhost';
   const now = Date.now();
 
-  // Skip rate limiting for localhost/internal requests
-  if (clientId === '127.0.0.1' || clientId === '0.0.0.0' || clientId === 'localhost' || clientId === '::1') {
+  // Skip rate limiting for localhost/internal requests completely
+  if (clientId === '127.0.0.1' || clientId === '0.0.0.0' || clientId === 'localhost' || clientId === '::1' || clientId.includes('127.0.0.1')) {
     return next();
   }
 
@@ -53,8 +54,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Database file path
+// Database file paths
 const BANK_DATA_FILE = path.join(__dirname, 'includes/database/data/bankData.json');
+const USERS_DATA_FILE = path.join(__dirname, 'includes/database/data/usersData.json');
 
 // Initialize bank data file if it doesn't exist
 async function initBankData() {
@@ -66,8 +68,11 @@ async function initBankData() {
         nextAccountNumber: 1000000
       });
     }
+    if (!await fs.pathExists(USERS_DATA_FILE)) {
+      await fs.outputJson(USERS_DATA_FILE, {});
+    }
   } catch (error) {
-    console.log('[BANK-API] Error initializing bank data:', error);
+    console.log('[BANK-API] Error initializing data files:', error);
   }
 }
 
@@ -91,6 +96,25 @@ async function saveBankData(data) {
   }
 }
 
+async function getUsersData() {
+  try {
+    return await fs.readJson(USERS_DATA_FILE);
+  } catch (error) {
+    console.log('[BANK-API] Error reading users data:', error);
+    return {};
+  }
+}
+
+async function saveUsersData(data) {
+  try {
+    await fs.outputJson(USERS_DATA_FILE, data, { spaces: 2 });
+    return true;
+  } catch (error) {
+    console.log('[BANK-API] Error saving users data:', error);
+    return false;
+  }
+}
+
 function generatePassword() {
   return Math.random().toString(36).slice(-8).toUpperCase();
 }
@@ -102,12 +126,8 @@ function generateAccountNumber(nextNum) {
 // Get user money from usersData.json
 async function getUserMoney(userId) {
   try {
-    const usersDataPath = path.join(__dirname, 'includes/database/data/usersData.json');
-    if (await fs.pathExists(usersDataPath)) {
-      const usersData = await fs.readJson(usersDataPath);
-      return usersData[userId]?.money || 0;
-    }
-    return 0;
+    const usersData = await getUsersData();
+    return usersData[userId]?.money || 0;
   } catch (error) {
     console.log(`[BANK-API] Error getting user money for ${userId}: ${error.message}`);
     return 0;
@@ -117,28 +137,50 @@ async function getUserMoney(userId) {
 // Update user money in usersData.json
 async function updateUserMoney(userId, newAmount) {
   try {
-    const usersDataPath = path.join(__dirname, 'includes/database/data/usersData.json');
-    if (await fs.pathExists(usersDataPath)) {
-      const usersData = await fs.readJson(usersDataPath);
-      if (!usersData[userId]) {
-        usersData[userId] = {
-          userID: userId,
-          money: 0,
-          exp: 0,
-          createTime: { timestamp: Date.now() },
-          data: { timestamp: Date.now() },
-          lastUpdate: Date.now()
-        };
-      }
-      usersData[userId].money = newAmount;
-      usersData[userId].lastUpdate = Date.now();
-      await fs.outputJson(usersDataPath, usersData, { spaces: 2 });
-      return true;
+    const usersData = await getUsersData();
+    if (!usersData[userId]) {
+      usersData[userId] = {
+        userID: userId,
+        money: 0,
+        exp: 0,
+        createTime: { timestamp: Date.now() },
+        data: { timestamp: Date.now() },
+        lastUpdate: Date.now()
+      };
     }
-    return false;
+    usersData[userId].money = newAmount;
+    usersData[userId].lastUpdate = Date.now();
+    await saveUsersData(usersData);
+    return true;
   } catch (error) {
     console.log(`[BANK-API] Error updating user money for ${userId}: ${error.message}`);
     return false;
+  }
+}
+
+// Get user name from usersData.json or bankData.json
+async function getUserName(userId) {
+  try {
+    const usersData = await getUsersData();
+    const bankData = await getBankData();
+    
+    // Try to get name from bank data first, then from users data
+    if (bankData.users[userId]?.name) {
+      return bankData.users[userId].name;
+    }
+    
+    // If not in bank data, try to extract from nested user data structure
+    const userData = usersData[userId];
+    if (userData) {
+      // Check various possible name fields in the nested structure
+      if (userData.name) return userData.name;
+      if (userData.data?.name) return userData.data.name;
+    }
+    
+    return `User-${userId.slice(-6)}`;
+  } catch (error) {
+    console.log(`[BANK-API] Error getting user name for ${userId}: ${error.message}`);
+    return `User-${userId.slice(-6)}`;
   }
 }
 
@@ -149,7 +191,7 @@ app.get('/', (req, res) => {
   res.json({
     status: true,
     message: "TOHI-BOT Bank API is running",
-    version: "2.0.0",
+    version: "3.0.0",
     endpoints: [
       '/bank/check',
       '/bank/register', 
@@ -205,9 +247,10 @@ app.get('/bank/register', async (req, res) => {
     const accountNumber = generateAccountNumber(bankData.nextAccountNumber);
     const password = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    // Get current money from currencies system
+    // Get current money from users data
     const currentMoney = await getUserMoney(senderID);
 
+    // Store bank-specific data
     bankData.users[senderID] = {
       name: decodeURI(name),
       STK: accountNumber,
@@ -217,6 +260,20 @@ app.get('/bank/register', async (req, res) => {
 
     bankData.nextAccountNumber += 1;
     await saveBankData(bankData);
+
+    // Ensure user exists in usersData.json
+    const usersData = await getUsersData();
+    if (!usersData[senderID]) {
+      usersData[senderID] = {
+        userID: senderID,
+        money: currentMoney,
+        exp: 0,
+        createTime: { timestamp: Date.now() },
+        data: { timestamp: Date.now() },
+        lastUpdate: Date.now()
+      };
+      await saveUsersData(usersData);
+    }
 
     res.json({
       status: true,
@@ -229,6 +286,7 @@ app.get('/bank/register', async (req, res) => {
       }
     });
   } catch (error) {
+    console.log('[BANK-API] Registration error:', error);
     res.json({ status: false, message: "Registration failed" });
   }
 });
@@ -240,32 +298,36 @@ app.get('/bank/find', async (req, res) => {
     const bankData = await getBankData();
 
     let user = null;
+    let userId = null;
 
     if (type === 'STK' && STK) {
       // Find by account number
-      for (const [userId, userData] of Object.entries(bankData.users)) {
+      for (const [uId, userData] of Object.entries(bankData.users)) {
         if (userData.STK === STK) {
-          user = { id: userId, ...userData };
+          user = userData;
+          userId = uId;
           break;
         }
       }
     } else if (type === 'ID' && ID) {
       // Find by user ID
       if (bankData.users[ID]) {
-        user = { id: ID, ...bankData.users[ID] };
+        user = bankData.users[ID];
+        userId = ID;
       }
     }
 
-    if (!user) {
+    if (!user || !userId) {
       return res.json({ status: false, message: "User not found" });
     }
 
-    const userMoney = await getUserMoney(user.id);
+    const userMoney = await getUserMoney(userId);
+    const userName = await getUserName(userId);
 
     res.json({
       status: true,
       message: {
-        name: user.name,
+        name: userName,
         data: {
           STK: user.STK,
           money: userMoney
@@ -273,6 +335,7 @@ app.get('/bank/find', async (req, res) => {
       }
     });
   } catch (error) {
+    console.log('[BANK-API] Find error:', error);
     res.json({ status: false, message: "Server error" });
   }
 });
@@ -311,15 +374,18 @@ app.get('/bank/send', async (req, res) => {
 
     await saveBankData(bankData);
 
+    const userName = await getUserName(senderID);
+
     res.json({
       status: true,
       message: {
         noti: "💰 Money deposited successfully!",
-        name: bankData.users[senderID].name,
+        name: userName,
         money: newAmount
       }
     });
   } catch (error) {
+    console.log('[BANK-API] Deposit error:', error);
     res.json({ status: false, message: "Deposit failed" });
   }
 });
@@ -368,15 +434,18 @@ app.get('/bank/get', async (req, res) => {
 
     await saveBankData(bankData);
 
+    const userName = await getUserName(ID);
+
     res.json({
       status: true,
       message: {
         noti: "💸 Money withdrawn successfully!",
-        name: user.name,
+        name: userName,
         money: newAmount
       }
     });
   } catch (error) {
+    console.log('[BANK-API] Withdrawal error:', error);
     res.json({ status: false, message: "Withdrawal failed" });
   }
 });
@@ -452,16 +521,20 @@ app.get('/bank/pay', async (req, res) => {
 
     await saveBankData(bankData);
 
+    const senderName = await getUserName(senderID);
+    const receiverName = await getUserName(receiverID);
+
     res.json({
       status: true,
       message: {
         noti: "💳 Transfer successful!",
         data: {
-          message: `Transferred $${amount} from ${sender.name} to ${receiver.name}`
+          message: `Transferred $${amount} from ${senderName} to ${receiverName}`
         }
       }
     });
   } catch (error) {
+    console.log('[BANK-API] Transfer error:', error);
     res.json({ status: false, message: "Transfer failed" });
   }
 });
@@ -470,12 +543,20 @@ app.get('/bank/pay', async (req, res) => {
 app.get('/bank/top', async (req, res) => {
   try {
     const bankData = await getBankData();
+    const usersData = await getUsersData();
 
     const usersWithMoney = [];
 
-    for (const [id, user] of Object.entries(bankData.users)) {
-      const money = await getUserMoney(id);
-      usersWithMoney.push({ id, ...user, money });
+    // Get all users from usersData (primary source)
+    for (const [id, userData] of Object.entries(usersData)) {
+      if (userData.money > 0) {
+        const userName = await getUserName(id);
+        usersWithMoney.push({ 
+          id, 
+          name: userName,
+          money: userData.money 
+        });
+      }
     }
 
     const users = usersWithMoney
@@ -498,6 +579,7 @@ app.get('/bank/top', async (req, res) => {
       ranking: ranking
     });
   } catch (error) {
+    console.log('[BANK-API] Top users error:', error);
     res.json({ status: false, message: "Failed to get rankings" });
   }
 });
@@ -537,11 +619,13 @@ app.get('/bank/password', async (req, res) => {
       bankData.users[dka].password = newPassword;
       await saveBankData(bankData);
 
+      const userName = await getUserName(dka);
+
       res.json({
         status: true,
         message: {
           noti: "🔐 Password changed successfully!",
-          name: user.name,
+          name: userName,
           password: newPassword
         }
       });
@@ -549,6 +633,7 @@ app.get('/bank/password', async (req, res) => {
       res.json({ status: false, message: "Invalid operation" });
     }
   } catch (error) {
+    console.log('[BANK-API] Password operation error:', error);
     res.json({ status: false, message: "Password operation failed" });
   }
 });
