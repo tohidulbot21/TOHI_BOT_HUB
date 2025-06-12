@@ -16,12 +16,14 @@ module.exports.run = async function({ api, event, args, Threads, Users, Currenci
   const process = require("process");
   const { threadID, messageID, senderID } = event;
   
-  // Only allow your specific UID to use restart
-  const allowedUID = "100092006324917"; // Your UID
-  
-  if (senderID !== allowedUID) {
-    return api.sendMessage("❌ You don't have permission to restart the bot. Only the bot owner can use this command.", threadID, messageID);
+  // Check if user is admin (permission level 2)
+  if (!global.config.ADMINBOT.includes(senderID)) {
+    return api.sendMessage("❌ You don't have permission to restart the bot. Only admins can use this command.", threadID, messageID);
   }
   
-  api.sendMessage(`restarting ${global.config.BOTNAME} ai, please be patient.`, threadID, ()=> process.exit(1));
+  api.sendMessage(`🔄 Restarting ${global.config.BOTNAME}... Please wait!`, threadID, () => {
+    setTimeout(() => {
+      process.exit(1);
+    }, 2000);
+  });
 }
