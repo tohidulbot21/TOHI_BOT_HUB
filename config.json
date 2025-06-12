@@ -126,5 +126,10 @@
   "sing2": {
     "YOUTUBE_API": "AIzaSyBtiD442srhczDpcg8xbhinP423BeUFXB8",
     "SOUNDCLOUD_API": "MMJhwmfTYJVFm9TiUdmYYyrf6Pzpzf3YN1"
+  },
+  "BANK_API": {
+    "BASE_URL": "https://api.sdwdewhgdjwwdjs.repl.co/bank",
+    "ENABLED": true,
+    "FALLBACK_URL": "https://your-backup-api.repl.co/bank"
   }
 }
