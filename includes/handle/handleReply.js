@@ -17,9 +17,14 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
       const reply = handleReply[replyIndex];
       const { name, author } = reply;
       
-      // Check if sender matches author (optional)
+      // Check if sender matches author (optional) and validate thread
       if (author && author !== senderID && !global.config.ADMINBOT?.includes(senderID)) {
         return; // Only author or admin can use reply
+      }
+      
+      // Validate thread ID matches
+      if (reply.threadID && reply.threadID !== threadID) {
+        return; // Reply is for different thread
       }
       
       // Get command
