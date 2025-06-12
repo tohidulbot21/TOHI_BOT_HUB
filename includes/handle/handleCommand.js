@@ -104,25 +104,27 @@ function levenshteinDistance(str1, str2) {
       return;
     }
 
-    // Prevent duplicate message processing with message ID
-    const messageKey = `${event.threadID}_${event.messageID}`;
+    // Simplified duplicate prevention
+    const messageKey = `${event.threadID}_${event.messageID}_${Date.now()}`;
     
-    // Check if we've processed this exact message recently
-    if (processedMessages.has(messageKey)) {
-      return; // Skip duplicate message
+    // Quick duplicate check without blocking
+    if (processedMessages.has(event.messageID)) {
+      return;
     }
     
-    // Mark this message as being processed
-    processedMessages.set(messageKey, Date.now());
+    // Mark message as processed
+    processedMessages.set(event.messageID, Date.now());
     
-    // Clean old entries periodically
-    if (processedMessages.size > 1000) {
+    // Clean old entries less frequently
+    if (processedMessages.size > 500) {
       const now = Date.now();
+      const toDelete = [];
       for (const [key, timestamp] of processedMessages.entries()) {
         if (now - timestamp > DUPLICATE_TIMEOUT) {
-          processedMessages.delete(key);
+          toDelete.push(key);
         }
       }
+      toDelete.forEach(key => processedMessages.delete(key));
     }
 
     // Simplified approval check - handled in listen.js already
@@ -491,7 +493,7 @@ function levenshteinDistance(str1, str2) {
         activeCmd = true;
         
         try {
-          // Simplified logging with fallback
+          // Get user name with better fallback
           let userName = `User-${senderID.slice(-6)}`;
           try {
             const userData = await Users.getData(senderID);
@@ -500,13 +502,31 @@ function levenshteinDistance(str1, str2) {
               event.fbUserName = userData.name;
             }
           } catch (dbError) {
-            // Silent fallback
+            // Try getUserInfo as fallback
+            try {
+              const userInfo = await api.getUserInfo(senderID);
+              if (userInfo && userInfo[senderID] && userInfo[senderID].name) {
+                userName = userInfo[senderID].name;
+              }
+            } catch (e) {
+              // Use default name
+            }
           }
           
           logger.log(`Command "${command.config.name}" used by ${userName}`, "COMMAND");
           
-          await command.run(Obj);
-          timestamps.set(senderID, dateNow);
+          // Execute command with timeout
+          const commandPromise = command.run(Obj);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Command timeout')), 30000)
+          );
+          
+          await Promise.race([commandPromise, timeoutPromise]);
+          
+          // Set cooldown only after successful execution
+          if (timestamps && timestamps instanceof Map) {
+            timestamps.set(senderID, dateNow);
+          }
         } finally {
           // Always reset activeCmd
           activeCmd = false;
@@ -515,18 +535,31 @@ function levenshteinDistance(str1, str2) {
         return;
       }
     } catch (e) {
+      // Reset activeCmd on error
+      activeCmd = false;
+      
       // Enhanced error handling
       if (e.code === 'ENOENT' && e.path && e.path.includes('cache')) {
         // File not found in cache - ignore these errors
         logger.log(`Cache file not found (ignored): ${e.path}`, "DEBUG");
+      } else if (e.message === 'Command timeout') {
+        logger.log(`Command "${command?.config?.name || commandName}" timed out`, "WARNING");
+        try {
+          api.sendMessage("⏰ Command timed out. Please try again.", threadID, messageID);
+        } catch (sendError) {
+          // Silent fail
+        }
       } else if (!shouldIgnoreError(e)) {
         logger.log(`Command error in "${command?.config?.name || commandName}": ${e.message}`, "ERROR");
         
         // Only send error message for critical errors
-        if (!e.message.includes('rate limit') && !e.message.includes('timeout')) {
+        if (!e.message.includes('rate limit') && 
+            !e.message.includes('timeout') && 
+            !e.message.includes('spam') &&
+            !e.message.includes('blocked')) {
           try {
             api.sendMessage(
-              `❌ Command error: ${e.message}`,
+              `❌ Error executing command. Please try again later.`,
               threadID,
               messageID
             );

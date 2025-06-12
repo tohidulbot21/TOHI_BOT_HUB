@@ -128,16 +128,17 @@ module.exports = function ({ api }) {
       };
     }
 
-    // Simplified approval check for groups - allow all commands for now
+    // Simplified approval system
     if (event.isGroup && event.type === "message") {
-      const isApproved = config.AUTO_APPROVE?.enabled || 
-                        config.APPROVAL?.approvedGroups?.includes(threadID) || 
-                        true; // Allow all groups by default
+      const isAdmin = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
       const isRejected = config.APPROVAL?.rejectedGroups?.includes(threadID) || false;
 
-      if (isRejected && !isAdmin) return;
+      // Only block if explicitly rejected and not admin
+      if (isRejected && !isAdmin) {
+        return; // Block rejected groups
+      }
       
-      // Don't block commands in groups anymore
+      // Allow all other groups
     }
 
     switch (event.type) {
