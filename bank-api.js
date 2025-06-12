@@ -6,11 +6,21 @@ const app = express();
 // Rate limiting
 const rateLimit = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const RATE_LIMIT_MAX = 50; // 50 requests per minute
+const RATE_LIMIT_MAX_EXTERNAL = 50; // 50 requests per minute for external
+const RATE_LIMIT_MAX_LOCAL = 500; // 500 requests per minute for local
 
 function rateLimitMiddleware(req, res, next) {
   const clientId = req.ip || 'unknown';
   const now = Date.now();
+
+  // Check if request is from local/internal (localhost, 127.0.0.1, 0.0.0.0)
+  const isLocal = ['127.0.0.1', '::1', '0.0.0.0', '::ffff:127.0.0.1', 'localhost'].includes(clientId) || 
+                  clientId.startsWith('::ffff:127.') || 
+                  clientId.startsWith('::ffff:0.0.0.') ||
+                  req.headers['user-agent']?.includes('axios') ||
+                  req.headers.host?.includes('localhost');
+
+  const maxRequests = isLocal ? RATE_LIMIT_MAX_LOCAL : RATE_LIMIT_MAX_EXTERNAL;
 
   if (!rateLimit.has(clientId)) {
     rateLimit.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
@@ -24,10 +34,10 @@ function rateLimitMiddleware(req, res, next) {
     return next();
   }
 
-  if (clientData.count >= RATE_LIMIT_MAX) {
+  if (clientData.count >= maxRequests) {
     return res.status(429).json({ 
       status: false, 
-      message: "Rate limit exceeded. Please try again later." 
+      message: `Rate limit exceeded. Please try again later. (${clientData.count}/${maxRequests})` 
     });
   }
 
@@ -255,7 +265,7 @@ app.get('/bank/find', async (req, res) => {
     }
 
     const userMoney = await getUserMoney(user.id);
-    
+
     res.json({
       status: true,
       message: {
@@ -292,7 +302,7 @@ app.get('/bank/send', async (req, res) => {
 
     const currentMoney = await getUserMoney(senderID);
     const newAmount = currentMoney + amount;
-    
+
     await updateUserMoney(senderID, newAmount);
 
     // Add transaction record
@@ -344,7 +354,7 @@ app.get('/bank/get', async (req, res) => {
     }
 
     const currentMoney = await getUserMoney(ID);
-    
+
     if (currentMoney < amount) {
       return res.json({ status: false, message: "Insufficient balance" });
     }
@@ -401,7 +411,7 @@ app.get('/bank/pay', async (req, res) => {
     }
 
     const senderMoney = await getUserMoney(senderID);
-    
+
     if (senderMoney < amount) {
       return res.json({ status: false, message: "Insufficient balance" });
     }
@@ -466,12 +476,12 @@ app.get('/bank/top', async (req, res) => {
     const bankData = await getBankData();
 
     const usersWithMoney = [];
-    
+
     for (const [id, user] of Object.entries(bankData.users)) {
       const money = await getUserMoney(id);
       usersWithMoney.push({ id, ...user, money });
     }
-    
+
     const users = usersWithMoney
       .sort((a, b) => b.money - a.money)
       .slice(0, 10);

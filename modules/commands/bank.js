@@ -37,13 +37,19 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
   const baseURL = bankConfig.BASE_URL;
   
   // Enhanced API call function with error handling and retry logic
-  async function makeApiCall(endpoint, params = {}, retries = 2) {
+  async function makeApiCall(endpoint, params = {}, retries = 1) {
     const queryString = new URLSearchParams(params).toString();
     const url = `${baseURL}${endpoint}${queryString ? '?' + queryString : ''}`;
     
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const response = await axios.get(url, { timeout: 15000 });
+        const response = await axios.get(url, { 
+          timeout: 10000,
+          headers: {
+            'User-Agent': 'TOHI-BOT-Bank-Client',
+            'X-Internal-Request': 'true'
+          }
+        });
         return response.data;
       } catch (error) {
         console.log(`[BANK] API Error (attempt ${attempt + 1}): ${error.message}`);
@@ -52,7 +58,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         if (error.response?.status === 429) {
           if (attempt < retries) {
             console.log(`[BANK] Rate limited, waiting before retry...`);
-            await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
             continue;
           }
           throw new Error('Bank service is busy. Please wait a moment and try again.');
@@ -62,7 +68,13 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         if (attempt === retries && bankConfig.FALLBACK_URL && bankConfig.FALLBACK_URL !== baseURL) {
           try {
             const fallbackUrl = `${bankConfig.FALLBACK_URL}${endpoint}${queryString ? '?' + queryString : ''}`;
-            const fallbackResponse = await axios.get(fallbackUrl, { timeout: 15000 });
+            const fallbackResponse = await axios.get(fallbackUrl, { 
+              timeout: 10000,
+              headers: {
+                'User-Agent': 'TOHI-BOT-Bank-Client',
+                'X-Internal-Request': 'true'
+              }
+            });
             return fallbackResponse.data;
           } catch (fallbackError) {
             console.log(`[BANK] Fallback API Error: ${fallbackError.message}`);
@@ -71,7 +83,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         
         // If not the last attempt, wait before retrying
         if (attempt < retries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
     }
