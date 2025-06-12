@@ -2,7 +2,7 @@ module.exports.config = {
 	name: "run",
 	version: "1.0.2",
 	permission: 3,
-  usePrefix: false,
+  usePrefix: true,
 	credits: "TOHI-BOT-HUB",
 	description: "running shell",
 	commandCategory: "admin",

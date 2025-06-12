@@ -2,6 +2,7 @@ module.exports.config = {
   name: "video2",
   version: "1.0.0",
   hasPermssion: 0,
+  usePrefix: true,
   credits: "MD Tohidul Islam",
   description: "Search for videos on YouTube.",
   commandCategory: "Media",
