@@ -77,6 +77,12 @@ handleSchedule.exectuteError=Having some error when schedule at module %1, error
 
 utils.throwError=[!] The command you are using is not syntax correct, please use %1help %2 for more usage details
 
+# help command
+
+help.user=User
+help.adminGroup=Admin group
+help.adminBot=Admin bot
+
 # slot command
 
 slot.missingInput=the bet money must not be blank or a negative number.

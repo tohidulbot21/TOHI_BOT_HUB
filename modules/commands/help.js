@@ -46,7 +46,8 @@ module.exports.handleEvent = function ({ api, event, getText }) {
     const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
     const command = commands.get(splitBody[1].toLowerCase());
     const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
-    return api.sendMessage(getText("moduleInfo", command.config.name, command.config.description, `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`, command.config.commandCategory, command.config.cooldowns, ((command.config.hasPermssion == 0) ? (getText("user") || "User") : (command.config.hasPermssion == 1) ? (getText("adminGroup") || "Admin Group") : (getText("adminBot") || "Admin Bot")), command.config.credits), threadID, messageID);
+    const permissionText = (command.config.hasPermssion == 0) ? "User" : (command.config.hasPermssion == 1) ? "Admin Group" : "Admin Bot";
+        return api.sendMessage(getText("moduleInfo", command.config.name, command.config.description, `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`, command.config.commandCategory, command.config.cooldowns, permissionText, command.config.credits), threadID, messageID);
 }
 
 module.exports.run = function ({ api, event, args, getText }) {
@@ -126,13 +127,14 @@ module.exports.run = function ({ api, event, args, getText }) {
     }
 
     // ---------- single module info ----------
+    const permissionText = (command.config.hasPermssion == 0) ? "User" : (command.config.hasPermssion == 1) ? "Admin Group" : "Admin Bot";
     const leiamname = getText("moduleInfo",
         command.config.name,
         command.config.description || "𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 𝙝𝙖𝙧 𝙘𝙤𝙢𝙢𝙖𝙣𝙙 𝙖𝙧𝙚 𝙢𝙖𝙜𝙞𝙘𝙖𝙡, 𝙚𝙖𝙨𝙮 𝙖𝙣𝙙 𝙨𝙢𝙖𝙧𝙩! 𝘾𝙝𝙖𝙩, 𝙛𝙪𝙣, 𝙪𝙩𝙞𝙡𝙞𝙩𝙮, 𝙖𝙣𝙙 𝙢𝙤𝙧𝙚 – 𝙖𝙡𝙬𝙖𝙮𝙨 𝙤𝙣 𝙮𝙤𝙪𝙧 𝙨𝙞𝙙𝙚. 💎",
         `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`,
         command.config.commandCategory,
         command.config.cooldowns,
-        ((command.config.hasPermssion == 0) ? (getText("user") || "User") : (command.config.hasPermssion == 1) ? (getText("adminGroup") || "Admin Group") : (getText("adminBot") || "Admin Bot")),
+        permissionText,
         command.config.credits
     );
 
