@@ -25,9 +25,9 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
   }
   
   const bankConfig = config.BANK_API || {
-    BASE_URL: "https://api.sdwdewhgdjwwdjs.repl.co/bank",
+    BASE_URL: "http://0.0.0.0:3001/bank",
     ENABLED: true,
-    FALLBACK_URL: "https://your-backup-api.repl.co/bank"
+    FALLBACK_URL: "http://127.0.0.1:3001/bank"
   };
   
   if (!bankConfig.ENABLED) {
@@ -36,30 +36,47 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
   
   const baseURL = bankConfig.BASE_URL;
   
-  // Enhanced API call function with error handling
-  async function makeApiCall(endpoint, params = {}) {
+  // Enhanced API call function with error handling and retry logic
+  async function makeApiCall(endpoint, params = {}, retries = 2) {
     const queryString = new URLSearchParams(params).toString();
     const url = `${baseURL}${endpoint}${queryString ? '?' + queryString : ''}`;
     
-    try {
-      const response = await axios.get(url, { timeout: 10000 });
-      return response.data;
-    } catch (error) {
-      console.log(`[BANK] API Error: ${error.message}`);
-      
-      // Try fallback URL if available
-      if (bankConfig.FALLBACK_URL && bankConfig.FALLBACK_URL !== baseURL) {
-        try {
-          const fallbackUrl = `${bankConfig.FALLBACK_URL}${endpoint}${queryString ? '?' + queryString : ''}`;
-          const fallbackResponse = await axios.get(fallbackUrl, { timeout: 10000 });
-          return fallbackResponse.data;
-        } catch (fallbackError) {
-          console.log(`[BANK] Fallback API Error: ${fallbackError.message}`);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await axios.get(url, { timeout: 15000 });
+        return response.data;
+      } catch (error) {
+        console.log(`[BANK] API Error (attempt ${attempt + 1}): ${error.message}`);
+        
+        // Handle rate limiting specifically
+        if (error.response?.status === 429) {
+          if (attempt < retries) {
+            console.log(`[BANK] Rate limited, waiting before retry...`);
+            await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
+            continue;
+          }
+          throw new Error('Bank service is busy. Please wait a moment and try again.');
+        }
+        
+        // Try fallback URL on last attempt
+        if (attempt === retries && bankConfig.FALLBACK_URL && bankConfig.FALLBACK_URL !== baseURL) {
+          try {
+            const fallbackUrl = `${bankConfig.FALLBACK_URL}${endpoint}${queryString ? '?' + queryString : ''}`;
+            const fallbackResponse = await axios.get(fallbackUrl, { timeout: 15000 });
+            return fallbackResponse.data;
+          } catch (fallbackError) {
+            console.log(`[BANK] Fallback API Error: ${fallbackError.message}`);
+          }
+        }
+        
+        // If not the last attempt, wait before retrying
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
         }
       }
-      
-      throw new Error('Bank service is currently unavailable. Please try again later.');
     }
+    
+    throw new Error('Bank service is currently unavailable. Please try again later.');
   }
   
   try {

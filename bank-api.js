@@ -4,9 +4,42 @@ const fs = require('fs-extra');
 const path = require('path');
 const app = express();
 
+// Rate limiting
+const rateLimit = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX = 50; // 50 requests per minute
+
+function rateLimitMiddleware(req, res, next) {
+  const clientId = req.ip || 'unknown';
+  const now = Date.now();
+  
+  if (!rateLimit.has(clientId)) {
+    rateLimit.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return next();
+  }
+  
+  const clientData = rateLimit.get(clientId);
+  
+  if (now > clientData.resetTime) {
+    rateLimit.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return next();
+  }
+  
+  if (clientData.count >= RATE_LIMIT_MAX) {
+    return res.status(429).json({ 
+      status: false, 
+      message: "Rate limit exceeded. Please try again later." 
+    });
+  }
+  
+  clientData.count++;
+  next();
+}
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(rateLimitMiddleware);
 
 // CORS middleware
 app.use((req, res, next) => {
@@ -62,6 +95,30 @@ function generateAccountNumber(nextNum) {
 }
 
 // API Routes
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    status: true,
+    message: "TOHI-BOT Bank API is running",
+    version: "2.0.0",
+    endpoints: [
+      '/bank/check',
+      '/bank/register', 
+      '/bank/find',
+      '/bank/send',
+      '/bank/get',
+      '/bank/pay',
+      '/bank/top',
+      '/bank/password'
+    ]
+  });
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Check if user has bank account
 app.get('/bank/check', async (req, res) => {
