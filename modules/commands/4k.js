@@ -1,65 +1,62 @@
-const axios = require("axios");
-const fs = require("fs-extra");
 module.exports.config = {
-  'name': '4k',
-  'version': "1.0.0",
-  'hasPermssion': 0x0,
-  'credits': "nazrul",
-  'premium': false,
+  name: '6k',
+  version: '1.1.1',
+  hasPermssion: 0,
   usePrefix: true,
-  'description': "Enhance Photo",
-  'commandCategory': "without prefix",
-  'usages': "reply image",
-  'cooldowns': 0x5,
-  'dependencies': {
-    'path': '',
-    'fs-extra': ''
-  }
-};
-module.exports.run = async function ({
-  api: _0x35648a,
-  event: _0xadd78e,
-  args: _0x1da3bd
-}) {
-  const _0x979f8 = __dirname + "/cache/remove_bg.jpg";
-  const {
-    threadID: _0x505ee2,
-    messageID: _0x4c4974
-  } = _0xadd78e;
-  const _0x37a8cc = _0xadd78e.messageReply ? _0xadd78e.messageReply.attachments[0].url : _0x1da3bd.join(" ");
-  if (!_0x37a8cc) {
-    _0x35648a.sendMessage("Please reply to a photo ", _0x505ee2, _0x4c4974);
-    return;
-  }
-  try {
-    const _0x2a6e15 = await _0x35648a.sendMessage("𝐏𝐥𝐞𝐚𝐬𝐞 𝐖𝐚𝐢𝐭 𝐁𝐚𝐛𝐲...😘", _0xadd78e.threadID);
-    const _0x3a6b64 = await axios.get("https://yt-video-production.up.railway.app/upscale?imageUrl=" + encodeURIComponent(_0x37a8cc));
-    const _0x2bfc9c = _0x3a6b64.data.imageUrl;
-    const _0x4ba5e0 = (await axios.get(_0x2bfc9c, {
-      'responseType': "arraybuffer"
-    })).data;
-    fs.writeFileSync(_0x979f8, Buffer.from(_0x4ba5e0, "binary"));
-    _0x35648a.sendMessage({
-      'body': "𝐈𝐦𝐚𝐠𝐞 𝐆𝐞𝐧𝐞𝐫𝐚𝐭𝐞𝐝 𝐒𝐮𝐜𝐜𝐞𝐟𝐮𝐥",
-      'attachment': fs.createReadStream(_0x979f8)
-    }, _0x505ee2, () => {
-      // Clean up cache file after sending
-      try {
-        if (fs.existsSync(_0x979f8)) {
-          fs.unlinkSync(_0x979f8);
-          console.log(`[4K] Cleaned up cache file: ${_0x979f8}`);
-        }
-      } catch (cleanupError) {
-        console.log(`[4K] Cache cleanup warning: ${cleanupError.message}`);
-      }
-    }, _0x4c4974);
-    _0x35648a.unsendMessage(_0x2a6e15.messageID);
-  } catch (_0x5def0b) {
-    try {
-      _0x35648a.sendMessage("Error processing image: " + _0x5def0b.message, _0x505ee2, _0x4c4974);
-    } catch (sendError) {
-      // Silent fail if message send fails
-      console.log("[4K] Failed to send error message:", sendError.message);
+  credits: '𝙈𝙧𝙏𝙤𝙢𝙓𝙭𝙓',
+  description: 'Edit photo',
+  commandCategory: 'Tools',
+  usages: 'Reply images or url images',
+  cooldowns: 2,
+  dependencies: {
+       'form-data': '',
+       'image-downloader': ''
     }
+};
+
+const axios = require('axios');
+const FormData = require('form-data');
+const fs = require('fs-extra');
+const path = require('path');
+const {image} = require('image-downloader');
+module.exports.run = async function({
+    api, event, args
+}){
+    try {
+        if (event.type !== "message_reply") return api.sendMessage("𝙔𝙤𝙪 𝙈𝙪𝙨𝙩 𝙍𝙚𝙥𝙡𝙮 𝙏𝙤 𝙖 𝙋𝙝𝙤𝙩𝙤", event.threadID, event.messageID);
+        if (!event.messageReply.attachments || event.messageReply.attachments.length == 0) return api.sendMessage("𝙍𝙚𝙥𝙡𝙮 𝙏𝙤 𝘼 𝙋𝙝𝙤𝙩𝙤", event.threadID, event.messageID);
+        if (event.messageReply.attachments[0].type != "photo") return api.sendMessage("𝙏𝙝𝙞𝙨 𝙄𝙨 𝙉𝙤𝙩 𝘼 𝙋𝙝𝙤𝙩𝙤", event.threadID, event.messageID);
+
+        const content = (event.type == "message_reply") ? event.messageReply.attachments[0].url : args.join(" ");
+        const MtxApi = ["ewgz1gG2c4pL82F4vQngTzMS","zDArrEvufj6f7EYePiNSAxLt"]
+        const inputPath = path.resolve(__dirname, 'cache', `photo.png`);
+         await image({
+        url: content, dest: inputPath
+    });
+        const formData = new FormData();
+        formData.append('size', 'auto');
+        formData.append('image_file', fs.createReadStream(inputPath), path.basename(inputPath));
+        axios({
+            method: 'post',
+            url: 'https://api.remove.bg/v1.0/removebg',
+            data: formData,
+            responseType: 'arraybuffer',
+            headers: {
+                ...formData.getHeaders(),
+                'X-Api-Key': MtxApi[Math.floor(Math.random() * MtxApi.length)],
+            },
+            encoding: null
+        })
+            .then((response) => {
+                if (response.status != 200) return console.error('Error:', response.status, response.statusText);
+                fs.writeFileSync(inputPath, response.data);
+                return api.sendMessage({ attachment: fs.createReadStream(inputPath) }, event.threadID, () => fs.unlinkSync(inputPath));
+            })
+            .catch((error) => {
+                return console.error('𝙈𝙏𝙓-𝙎𝙚𝙧𝙫𝙚𝙧 𝙁𝙖𝙞𝙡:', error);
+            });
+     } catch (e) {
+        console.log(e)
+        return api.sendMessage(`𝘾𝙝𝙖𝙣𝙜𝙚𝙞𝙣𝙜 𝙀𝙫𝙚𝙧𝙮𝙩𝙝𝙞𝙣𝙜 𝙄𝙨 𝙉𝙤𝙩 𝙂𝙤𝙤𝙙`, event.threadID, event.messageID);
   }
 };
