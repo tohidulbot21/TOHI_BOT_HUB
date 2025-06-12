@@ -103,8 +103,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         case '-r':
         case 'r': {
             try {
-              const userData = await Users.getData(senderID);
-              const userName = userData.name || `User${senderID.slice(-6)}`;
+              const userName = await getUserName(senderID);
               
               const res = await makeApiCall('/register', {
                 senderID: senderID,
@@ -112,7 +111,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
               });
               if(res.status == false) return api.sendMessage(res.message, threadID, messageID);
               api.sendMessage('Your bank password is: ' + res.message.password, senderID);
-              return api.sendMessage(`=== [ ${res.message.noti} ] ===\n👤 Account holder: ${res.message.name}\n💳 Account Number: ${res.message.STK}\n💰 Balance: ${res.message.money}$\n🔐  Password: sent to your private messages, please check your inbox (or spam)`, threadID, messageID)
+              return api.sendMessage(`=== [ ${res.message.noti} ] ===\n👤 Account holder: ${userName}\n💳 Account Number: ${res.message.STK}\n💰 Balance: ${res.message.money}$\n🔐  Password: sent to your private messages, please check your inbox (or spam)`, threadID, messageID)
             } catch (error) {
               return api.sendMessage('❌ Registration failed. Please try again.', threadID, messageID);
             }
@@ -306,6 +305,40 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
       w = i.money || 0
       if (w < parseInt(maxMoney)) return false;
       else return true;
+  }
+  
+  // Helper function to get user name
+  async function getUserName(userId) {
+    try {
+      const userData = await Users.getData(userId);
+      if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim() && !userData.name.startsWith('User')) {
+        return userData.name;
+      }
+      
+      // Try to get from Facebook
+      try {
+        const axios = require('axios');
+        const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, {
+          timeout: 5000
+        });
+        
+        if (response.data && response.data.name && response.data.name.trim()) {
+          const fbName = response.data.name.trim();
+          
+          // Update user data with the fetched name
+          await Users.setData(userId, { name: fbName });
+          
+          return fbName;
+        }
+      } catch (fbError) {
+        console.log(`[BANK] Facebook API error for ${userId}: ${fbError.message}`);
+      }
+      
+      return `User${userId.slice(-6)}`;
+    } catch (error) {
+      console.log(`[BANK] Error getting user name for ${userId}: ${error.message}`);
+      return `User${userId.slice(-6)}`;
+    }
   }
 }
 

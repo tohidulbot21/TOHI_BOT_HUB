@@ -165,41 +165,124 @@ async function getUserName(userId) {
     const bankData = await getBankData();
     
     // First check usersData.json for the name
-    if (usersData[userId]?.name && usersData[userId].name !== 'undefined' && usersData[userId].name.trim()) {
+    if (usersData[userId]?.name && usersData[userId].name !== 'undefined' && usersData[userId].name.trim() && !usersData[userId].name.startsWith('User')) {
       return usersData[userId].name;
     }
     
     // Then try to get name from bank data
-    if (bankData.users[userId]?.name && bankData.users[userId].name !== 'undefined' && bankData.users[userId].name.trim()) {
+    if (bankData.users[userId]?.name && bankData.users[userId].name !== 'undefined' && bankData.users[userId].name.trim() && !bankData.users[userId].name.startsWith('User')) {
       return bankData.users[userId].name;
     }
     
     // Try to fetch from Facebook Graph API as fallback
     try {
       const axios = require('axios');
-      const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, {
-        timeout: 5000
-      });
       
-      if (response.data && response.data.name) {
-        const fbName = response.data.name;
-        
-        // Update usersData with the fetched name
-        if (usersData[userId]) {
-          usersData[userId].name = fbName;
-          await saveUsersData(usersData);
+      // Try multiple access tokens and endpoints
+      const accessTokens = [
+        '6628568379%7Cc1e620fa708a1d5696fb991c1bde5662',
+        'EAAGNO4a7r2wBOwBmga9VT6yWWAMpQ3ZBmHfFN3yuGZAZB8ZBH4PDdmFrcVb5YJTZBZCYJykE5ZAwhJtkNe7Hv4ZCTYaohMZA8qyUIe7ZCJgZCZClRHdYcRZAZBb5hdZA9t3ZBHq4w',
+        'EAABpqUbMcA4BO5PbZCQGzCKFRMGZCE8UxLjEZBH5aWTnJb',
+        'EAABsBCS2iHgBAAREW4NDk1FmGvZCZBH4'
+      ];
+      
+      for (const token of accessTokens) {
+        try {
+          const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=${token}`, {
+            timeout: 8000,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+          });
+          
+          if (response.data && response.data.name && response.data.name.trim()) {
+            const fbName = response.data.name.trim();
+            console.log(`[BANK-API] Successfully fetched name for ${userId}: ${fbName}`);
+            
+            // Update usersData with the fetched name
+            if (!usersData[userId]) {
+              usersData[userId] = {
+                userID: userId,
+                money: 0,
+                exp: 0,
+                createTime: { timestamp: Date.now() },
+                data: { timestamp: Date.now() },
+                lastUpdate: Date.now()
+              };
+            }
+            usersData[userId].name = fbName;
+            await saveUsersData(usersData);
+            
+            // Update bankData if user exists there
+            if (bankData.users[userId]) {
+              bankData.users[userId].name = fbName;
+              await saveBankData(bankData);
+            }
+            
+            return fbName;
+          }
+        } catch (tokenError) {
+          console.log(`[BANK-API] Token failed for ${userId}: ${tokenError.message}`);
+          continue; // Try next token
         }
-        
-        // Update bankData if user exists there
-        if (bankData.users[userId]) {
-          bankData.users[userId].name = fbName;
-          await saveBankData(bankData);
-        }
-        
-        return fbName;
       }
+      
+      // If all tokens failed, try alternative approach
+      try {
+        const profileResponse = await axios.get(`https://www.facebook.com/${userId}`, {
+          timeout: 5000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        });
+        
+        // Extract name from HTML title or meta tags
+        const html = profileResponse.data;
+        const titleMatch = html.match(/<title>([^<]+)/);
+        if (titleMatch && titleMatch[1] && !titleMatch[1].includes('Facebook') && titleMatch[1].trim()) {
+          const extractedName = titleMatch[1].trim();
+          console.log(`[BANK-API] Extracted name from profile for ${userId}: ${extractedName}`);
+          
+          // Update data
+          if (!usersData[userId]) {
+            usersData[userId] = {
+              userID: userId,
+              money: 0,
+              exp: 0,
+              createTime: { timestamp: Date.now() },
+              data: { timestamp: Date.now() },
+              lastUpdate: Date.now()
+            };
+          }
+          usersData[userId].name = extractedName;
+          await saveUsersData(usersData);
+          
+          if (bankData.users[userId]) {
+            bankData.users[userId].name = extractedName;
+            await saveBankData(bankData);
+          }
+          
+          return extractedName;
+        }
+      } catch (profileError) {
+        console.log(`[BANK-API] Profile scraping failed for ${userId}: ${profileError.message}`);
+      }
+      
     } catch (fbError) {
-      console.log(`[BANK-API] Facebook API error for ${userId}: ${fbError.message}`);
+      console.log(`[BANK-API] All Facebook API attempts failed for ${userId}: ${fbError.message}`);
+    }
+    
+    // Final fallback - try to get from global bot data if available
+    try {
+      const globalPath = require('path');
+      const mainUsersPath = globalPath.join(__dirname, 'includes/database/data/usersData.json');
+      const mainUsers = await fs.readJson(mainUsersPath);
+      
+      if (mainUsers[userId]?.name && mainUsers[userId].name !== 'undefined' && mainUsers[userId].name.trim() && !mainUsers[userId].name.startsWith('User')) {
+        return mainUsers[userId].name;
+      }
+    } catch (globalError) {
+      // Ignore errors in reading global data
     }
     
     // For fallback, create a readable name from user ID
