@@ -50,24 +50,13 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
     return true;
   }
 
-  // Command execution with timeout and error handling
+  // Command execution without timeout
   async function executeCommand(command, Obj, commandName) {
-    const timeoutDuration = getCommandTimeout(commandName);
-
-    return new Promise(async (resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Command "${commandName}" timed out after ${timeoutDuration / 1000}s`));
-      }, timeoutDuration);
-
-      try {
-        const result = await command.run(Obj);
-        clearTimeout(timeoutId);
-        resolve(result);
-      } catch (error) {
-        clearTimeout(timeoutId);
-        reject(error);
-      }
-    });
+    try {
+      return await command.run(Obj);
+    } catch (error) {
+      throw error;
+    }
   }
 
   function getCommandTimeout(commandName) {
