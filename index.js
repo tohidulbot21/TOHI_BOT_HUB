@@ -164,11 +164,10 @@ async function checkAndUpdateDependencies() {
 
 // Initialize colorful logging system
 const logger = require("./utils/log");
-const { join } = require("path");
 
-// Use themed logging for startup
-logger.themed.banner("TOHI-BOT-HUB STARTING UP");
-console.success("Colorful logging system initialized!");
+// Initialize system health monitoring
+const systemHealth = require('./utils/systemHealth');
+systemHealth.startHealthMonitoring();
 
 // Enhanced startup sequence
 console.log(chalk.blue.bold(`
@@ -178,6 +177,10 @@ console.log(chalk.blue.bold(`
 ║     Created by TOHI-BOT-HUB Team     ║
 ╚══════════════════════════════════════╝
 `));
+
+// Use themed logging for startup
+logger.themed.banner("TOHI-BOT-HUB STARTING UP");
+console.success("Colorful logging system initialized!");
 
 // Start update check with delay for better startup experience
 setTimeout(() => {

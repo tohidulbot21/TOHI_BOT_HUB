@@ -95,10 +95,27 @@ function startProject() {
   try {
     logger.log("Starting TOHI-BOT-HUB main process...", "STARTUP");
 
+    // Initialize performance optimizer
+    try {
+      const performanceOptimizer = require('./utils/performanceOptimizer');
+      performanceOptimizer.startAutoOptimization();
+    } catch (e) {
+      logger.log("Performance optimizer initialization failed", "WARNING");
+    }
+
+    // Initialize command recovery system
+    try {
+      const commandRecovery = require('./utils/commandRecovery');
+      commandRecovery.startAutoCleanup();
+    } catch (e) {
+      logger.log("Command recovery system initialization failed", "WARNING");
+    }
+
     const child = spawn("node", [
       "--trace-warnings", 
       "--async-stack-traces", 
-      "--max-old-space-size=2048",
+      "--max-old-space-size=3072", // Increased memory limit
+      "--expose-gc", // Enable garbage collection
       "index.js"
     ], {
       cwd: process.cwd(),

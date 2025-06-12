@@ -2,7 +2,7 @@ let activeCmd = false;
 const processedMessages = new Map(); // Track processed messages
 const DUPLICATE_TIMEOUT = 3000; // 3 seconds
 
-// Define shouldIgnoreError function to handle specific errors
+// Enhanced shouldIgnoreError function to handle more error types
 function shouldIgnoreError(error) {
   if (!error) return false;
 
@@ -41,6 +41,21 @@ function shouldIgnoreError(error) {
 
   // Permission and blocked action errors
   if (errorStr.includes('blocked') || errorStr.includes('permission') || error.blockedAction) {
+    return true;
+  }
+
+  // Additional error types to ignore
+  if (errorStr.includes('econnreset') || errorStr.includes('enotfound') || errorStr.includes('etimedout')) {
+    return true;
+  }
+
+  // API endpoint errors
+  if (errorStr.includes('endpoint') || errorStr.includes('service unavailable') || errorStr.includes('bad gateway')) {
+    return true;
+  }
+
+  // Cache and file system errors
+  if (errorStr.includes('enoent') && errorStr.includes('cache')) {
     return true;
   }
 
@@ -535,32 +550,53 @@ function levenshteinDistance(str1, str2) {
 
           logger.log(`Command "${command.config.name}" used by ${userName}`, "COMMAND");
 
-          // Execute command with extended timeout and retry mechanism
+          // Enhanced command execution with retry mechanism and memory optimization
           let retryCount = 0;
-          const maxRetries = 2;
+          const maxRetries = 3;
+          let commandResult = null;
           
           while (retryCount <= maxRetries) {
             try {
+              // Determine timeout based on command type
+              let timeoutDuration = 60000; // Default 60 seconds
+              
+              // Extended timeout for heavy commands
+              const heavyCommands = ['album2', 'work', 'video', 'download', 'ai', 'imagine', 'gemini'];
+              if (heavyCommands.includes(command.config.name)) {
+                timeoutDuration = 180000; // 3 minutes for heavy commands
+              }
+              
               const commandPromise = command.run(Obj);
               const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Command took too long to execute')), 120000)
+                setTimeout(() => reject(new Error('Command execution timeout')), timeoutDuration)
               );
               
-              await Promise.race([commandPromise, timeoutPromise]);
+              commandResult = await Promise.race([commandPromise, timeoutPromise]);
               break; // Success, exit retry loop
               
             } catch (retryError) {
               retryCount++;
               
-              // Only retry for specific recoverable errors
+              // Enhanced retry logic for more error types
               const shouldRetry = retryError.message.includes('network') || 
                                 retryError.message.includes('timeout') ||
                                 retryError.message.includes('ECONNRESET') ||
-                                retryError.message.includes('ETIMEDOUT');
+                                retryError.message.includes('ETIMEDOUT') ||
+                                retryError.message.includes('fetch') ||
+                                retryError.message.includes('request failed') ||
+                                retryError.code === 'ENOTFOUND' ||
+                                retryError.code === 'ECONNREFUSED';
               
               if (retryCount <= maxRetries && shouldRetry) {
-                logger.log(`Command "${command.config.name}" failed (attempt ${retryCount}), retrying...`, "DEBUG");
-                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+                const backoffDelay = Math.min(2000 * Math.pow(2, retryCount - 1), 10000);
+                logger.log(`Command "${command.config.name}" failed (attempt ${retryCount}/${maxRetries}), retrying after ${backoffDelay}ms...`, "DEBUG");
+                
+                // Clean up resources before retry
+                if (global.gc && typeof global.gc === 'function') {
+                  try { global.gc(); } catch (e) { /* ignore */ }
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, backoffDelay));
                 continue;
               } else {
                 throw retryError; // Re-throw if not retryable or max retries reached
@@ -625,17 +661,26 @@ function levenshteinDistance(str1, str2) {
           try {
             let errorMsg = '';
             
-            // Provide specific error messages based on error type
+            // Enhanced error messages with more specific types
+            const cmdName = command?.config?.name || commandName;
+            
             if (e.message.includes('Cannot read property') || e.message.includes('Cannot read properties')) {
-              errorMsg = `❌ ${command?.config?.name || commandName} command encountered a data error. Please try again.\n🔧 Made by TOHIDUL`;
-            } else if (e.message.includes('fetch') || e.message.includes('request')) {
-              errorMsg = `❌ ${command?.config?.name || commandName} command failed due to network issues. Please try again later.\n🔧 Made by TOHIDUL`;
+              errorMsg = `❌ ${cmdName} কমান্ডে ডেটা এরর হয়েছে। আবার চেষ্টা করুন।\n🔧 TOHIDUL এর তৈরি`;
+            } else if (e.message.includes('fetch') || e.message.includes('request') || e.message.includes('network')) {
+              errorMsg = `❌ ${cmdName} কমান্ড নেটওয়ার্ক সমস্যার কারণে ব্যর্থ। পরে চেষ্টা করুন।\n🔧 TOHIDUL এর তৈরি`;
             } else if (e.message.includes('rate limit') || e.message.includes('429')) {
-              errorMsg = `❌ ${command?.config?.name || commandName} command is temporarily limited. Please wait and try again.\n🔧 Made by TOHIDUL`;
+              errorMsg = `❌ ${cmdName} কমান্ড সাময়িকভাবে সীমিত। অপেক্ষা করে আবার চেষ্টা করুন।\n⏰ অপেক্ষার সময়: ৫-১০ মিনিট\n🔧 TOHIDUL এর তৈরি`;
             } else if (e.message.includes('permission') || e.message.includes('access')) {
-              errorMsg = `❌ ${command?.config?.name || commandName} command requires special permissions. Contact admin.\n🔧 Made by TOHIDUL`;
+              errorMsg = `❌ ${cmdName} কমান্ডের জন্য বিশেষ অনুমতি প্রয়োজন। অ্যাডমিনের সাথে যোগাযোগ করুন।\n🔧 TOHIDUL এর তৈরি`;
+            } else if (e.message.includes('timeout') || e.message.includes('took too long')) {
+              errorMsg = `❌ ${cmdName} কমান্ড সময়সীমা অতিক্রম করেছে। এটি ভারী কমান্ড হতে পারে।\n💡 পরামর্শ: আবার চেষ্টা করুন অথবা সহজ কমান্ড ব্যবহার করুন।\n🔧 TOHIDUL এর তৈরি`;
+            } else if (e.code === 'ENOENT') {
+              errorMsg = `❌ ${cmdName} কমান্ডের প্রয়োজনীয় ফাইল খুঁজে পাওয়া যায়নি।\n🔧 TOHIDUL এর তৈরি`;
+            } else if (e.message.includes('Invalid') || e.message.includes('missing')) {
+              errorMsg = `❌ ${cmdName} কমান্ডে ভুল প্যারামিটার। সঠিক ফরম্যাট চেক করুন।\n📝 সাহায্যের জন্য: /help ${cmdName}\n🔧 TOHIDUL এর তৈরি`;
             } else {
-              errorMsg = `❌ ${command?.config?.name || commandName} command failed: ${e.message.substring(0, 100)}...\n\n🔧 Please try again or contact admin if issue persists.\n🚩 Made by TOHIDUL`;
+              const shortError = e.message.length > 80 ? e.message.substring(0, 80) + '...' : e.message;
+              errorMsg = `❌ ${cmdName} কমান্ড ব্যর্থ: ${shortError}\n\n🔧 আবার চেষ্টা করুন বা সমস্যা চলমান থাকলে অ্যাডমিনের সাথে যোগাযোগ করুন।\n🚩 TOHIDUL এর তৈরি`;
             }
             
             api.sendMessage(errorMsg, threadID, messageID);
