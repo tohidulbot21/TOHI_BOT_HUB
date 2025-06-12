@@ -271,13 +271,34 @@ module.exports.run = async function ({ api, event, args }) {
       return api.sendMessage(
         `✅ Done! ${link.length} Results match your search keyword: \n${msg}\nPlease reply(feedback) choose one of the above searches\nMaximum Song Time is 10M!`,
         event.threadID,
-        (error, info) =>
+        async (error, info) => {
           global.client.handleReply.push({
             name: this.config.name,
             messageID: info.messageID,
             author: event.senderID,
             link,
-          }),
+          });
+
+          // Clean up any YouTube player script files
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            const rootDir = path.join(__dirname, '../..');
+            const files = fs.readdirSync(rootDir);
+            files.forEach(file => {
+              if (file.match(/^\d+-player-script\.js$/)) {
+                try {
+                  fs.unlinkSync(path.join(rootDir, file));
+                  console.log(`[SING2] Cleaned up script file: ${file}`);
+                } catch(err) {
+                  // Ignore errors
+                }
+              }
+            });
+          } catch(err) {
+            // Ignore cleanup errors
+          }
+        },
         event.messageID,
       );
     } catch (error) {

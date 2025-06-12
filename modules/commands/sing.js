@@ -24,27 +24,27 @@ module.exports.config = {
 module.exports.handleReply = async function({ api, event, handleReply }) {
   const ytdl = global.nodemodule["@distube/ytdl-core"];
   const { createReadStream, createWriteStream, unlinkSync, statSync } = global.nodemodule["fs-extra"];
-  
+
   // Validate user input
   const selection = parseInt(event.body.trim());
   if (isNaN(selection) || selection < 1 || selection > handleReply.link.length) {
     return api.sendMessage(`❌ Invalid selection! Please reply with a number between 1 and ${handleReply.link.length}`, event.threadID, event.messageID);
   }
-  
+
   const selectedIndex = selection - 1;
   const selectedLink = `https://www.youtube.com/watch?v=${handleReply.link[selectedIndex]}`;
-  
+
   try {
     const info = await ytdl.getInfo(selectedLink);
     const title = info.videoDetails.title;
     const videoId = handleReply.link[selectedIndex];
-    
+
     // Send processing message
     const processingMsg = await api.sendMessage(
       `🎵 Processing audio...\n──────────\n${title}\n──────────\nPlease wait!`, 
       event.threadID
     );
-    
+
     // Download and send audio
     const stream = ytdl(selectedLink, { filter: "audioonly" })
       .pipe(createWriteStream(__dirname + `/cache/${videoId}.m4a`))
@@ -76,11 +76,11 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
         api.sendMessage(`❌ Download error: ${error.message}`, event.threadID, event.messageID);
         api.unsendMessage(processingMsg.messageID);
       });
-      
+
   } catch (error) {
     api.sendMessage(`❌ Unable to process your request: ${error.message}`, event.threadID, event.messageID);
   }
-  
+
   // Remove reply handler
   return api.unsendMessage(handleReply.messageID);
 }
@@ -158,4 +158,86 @@ module.exports.run = async function({ api, event, args }) {
       api.sendMessage("❌The request could not be processed due to an error: " + error.message, event.threadID, event.messageID);
     }
   }
+}
+const ytdl = global.nodemodule["@distube/ytdl-core"];
+module.exports.handleReply = async function({ api, event, handleReply }) {
+  const { createReadStream, createWriteStream, unlinkSync, statSync } = global.nodemodule["fs-extra"];
+
+  // Validate user input
+  const choice = parseInt(event.body.trim()) - 1;
+  if (isNaN(choice) || choice < 0 || choice >= handleReply.link.length) {
+    return api.sendMessage(`❌ Invalid selection! Please reply with a number between 1 and ${handleReply.link.length}`, event.threadID, event.messageID);
+  }
+
+  try {
+    // Send processing message
+    const processingMsg = await api.sendMessage(
+      `🎵 Processing audio...\n──────────\n${handleReply.link[choice]}\n──────────\nPlease wait!`,
+      event.threadID
+    );
+
+    // Download and send audio
+    const stream = ytdl(handleReply.link[choice], {
+        filter: "audioonly",
+        quality: "highestaudio",
+        agent: false,
+        debug: false
+      });
+
+      // Clean up any YouTube player script files
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const rootDir = path.join(__dirname, '../..');
+        const files = fs.readdirSync(rootDir);
+        files.forEach(file => {
+          if (file.match(/^\d+-player-script\.js$/)) {
+            try {
+              fs.unlinkSync(path.join(rootDir, file));
+              console.log(`[SING] Cleaned up script file: ${file}`);
+            } catch(err) {
+              // Ignore errors
+            }
+          }
+        });
+      } catch(err) {
+        // Ignore cleanup errors
+      }
+    const videoId = handleReply.link[choice];
+    stream.pipe(createWriteStream(__dirname + `/cache/${videoId}.m4a`))
+      .on("close", () => {
+        try {
+          const fileSize = statSync(__dirname + `/cache/${videoId}.m4a`).size;
+          if (fileSize > 52428800) {
+            api.sendMessage('❌ File cannot be sent because it is larger than 50MB.', event.threadID, event.messageID);
+            unlinkSync(__dirname + `/cache/${videoId}.m4a`);
+          } else {
+            api.sendMessage({
+              body: `🎵 ${handleReply.link[choice]}`,
+              attachment: createReadStream(__dirname + `/cache/${videoId}.m4a`)
+            }, event.threadID, () => {
+              try {
+                unlinkSync(__dirname + `/cache/${videoId}.m4a`);
+              } catch (e) {
+                console.log("Cache cleanup error:", e.message);
+              }
+            }, event.messageID);
+          }
+          // Remove processing message
+          api.unsendMessage(processingMsg.messageID);
+        } catch (error) {
+          api.sendMessage(`❌ Error processing file: ${error.message}`, event.threadID, event.messageID);
+        }
+      })
+      .on("error", (error) => {
+        api.sendMessage(`❌ Download error: ${error.message}`, event.threadID, event.messageID);
+        api.unsendMessage(processingMsg.messageID);
+      });
+
+  } catch (error) {
+    api.sendMessage(`❌ Unable to process your request: ${error.message}`, event.threadID, event.messageID);
+  }
+
+  // Remove reply handler
+  return api.unsendMessage(handleReply.messageID);
 }

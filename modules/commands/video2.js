@@ -31,6 +31,26 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
       }
     }
 
+    // Clean up any YouTube player script files
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const rootDir = path.join(__dirname, '../..');
+      const files = fs.readdirSync(rootDir);
+      files.forEach(file => {
+        if (file.match(/^\d+-player-script\.js$/)) {
+          try {
+            fs.unlinkSync(path.join(rootDir, file));
+            console.log(`[VIDEO] Cleaned up script file: ${file}`);
+          } catch(err) {
+            // Ignore errors
+          }
+        }
+      });
+    } catch(err) {
+      // Ignore cleanup errors
+    }
+
     const videoId = handleReply.link[event.body - 1];
     const info = await ytdl.getInfo(videoId);
     let body = info.videoDetails.title;
@@ -48,7 +68,9 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-      }
+      },
+      agent: false,
+      debug: false
     });
 
     stream.pipe(createWriteStream(filePath))
@@ -197,7 +219,9 @@ module.exports.run = async function({ api, event, args }) {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
           }
-        }
+        },
+        agent: false,
+        debug: false
       });
 
       stream.pipe(createWriteStream(filePath))

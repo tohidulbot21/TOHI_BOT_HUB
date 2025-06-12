@@ -716,3 +716,29 @@ process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
   globalErrorHandler.logError(error, 'UncaughtException');
 });
+
+global.client.commands = new Map();
+global.client.commandAliases = new Map();
+global.client.events = new Map();
+global.client.cooldowns = new Map();
+global.client.eventRegistered = new Array();
+global.client.handleSchedule = new Array();
+global.client.handleReaction = new Array();
+global.client.handleReply = new Array();
+global.client.handleUnsend = new Array();
+global.client.commandBanned = new Map();
+global.client.threadBanned = new Map();
+global.client.threadInfo = new Map();
+global.client.userBanned = new Map();
+global.client.threadData = new Map();
+global.client.userData = new Map();
+global.client.userRegister = new Array();
+global.client.nnsfw = new Array();
+global.client.autoban = new Array();
+global.client.autodownload = new Array();
+global.client.allUserID = new Array();
+global.client.allCurrenciesID = new Array();
+global.client.allThreadID = new Array();
+
+// Initialize script cleanup utility
+require('./utils/scriptCleanup');
