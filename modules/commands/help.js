@@ -14,29 +14,9 @@ module.exports.config = {
     }
 };
 
-module.exports.languages = {
-    "en": {
-        "moduleInfo": `
-╔═────── ★ ★ ─────═╗
-        💫 𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 𝙈𝙊𝘿𝙐𝙇𝙀 𝙄𝙉𝙁𝙊 💫
-╚═────── ★ ★ ─────═╝
-🔹 𝗡𝗮𝗺𝗲         : %1
-🔸 𝗨𝘀𝗮𝗴𝗲        : %3
-📝 𝗗𝗲𝘀𝗰𝗿𝗶𝗽𝘁𝗶𝗼𝗻   : %2
-🌈 𝗖𝗮𝘁𝗲𝗴𝗼𝗿𝘆     : %4
-⏳ 𝗖𝗼𝗼𝗹𝗱𝗼𝘄𝗻     : %5s
-🔑 𝗣𝗲𝗿𝗺𝗶𝘀𝘀𝗶𝗼𝗻   : %6
+// Language dependencies removed - using hardcoded text
 
-⚡️ 𝙈𝙖𝙙𝙚 𝙗𝙮 𝙏𝙊𝙃𝙄𝘿𝙐𝙇 | 𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 ⚡️`,
-        "helpList": `✨ 𝙏𝙊𝙃𝙄-𝘽𝙊𝙏-এ মোট %1টি কমান্ড আছে!
-🔍 𝙏𝙄𝙋: %2help [কমান্ডনাম] লিখে বিস্তারিত জানুন!`,
-        "user": "User",
-        "adminGroup": "Admin group",
-        "adminBot": "Admin bot"
-    }
-};
-
-module.exports.handleEvent = function ({ api, event, getText }) {
+module.exports.handleEvent = function ({ api, event }) {
     const { commands } = global.client;
     const { threadID, messageID, body } = event;
 
@@ -47,15 +27,29 @@ module.exports.handleEvent = function ({ api, event, getText }) {
     const command = commands.get(splitBody[1].toLowerCase());
     const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
     const permissionText = (command.config.hasPermssion == 0) ? "User" : (command.config.hasPermssion == 1) ? "Admin Group" : "Admin Bot";
-        return api.sendMessage(getText("moduleInfo", command.config.name, command.config.description, `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`, command.config.commandCategory, command.config.cooldowns, permissionText, command.config.credits), threadID, messageID);
+    
+    const moduleInfo = `
+╔═────── ★ ★ ─────═╗
+        💫 𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 𝙈𝙊𝘿𝙐𝙇𝙀 𝙄𝙉𝙁𝙊 💫
+╚═────── ★ ★ ─────═╝
+🔹 𝗡𝗮𝗺𝗲         : ${command.config.name}
+🔸 𝗨𝘀𝗮𝗴𝗲        : ${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}
+📝 𝗗𝗲𝘀𝗰𝗿𝗶𝗽𝘁𝗶𝗼𝗻   : ${command.config.description || "𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 𝙝𝙖𝙧 𝙘𝙤𝙢𝙢𝙖𝙣𝙙 𝙖𝙧𝙚 𝙢𝙖𝙜𝙞𝙘𝙖𝙡, 𝙚𝙖𝙨𝙮 𝙖𝙣𝙙 𝙨𝙢𝙖𝙧𝙩! 💎"}
+🌈 𝗖𝗮𝘁𝗲𝗴𝗼𝗿𝘆     : ${command.config.commandCategory}
+⏳ 𝗖𝗼𝗼𝗹𝗱𝗼𝘄𝗻     : ${command.config.cooldowns}s
+🔑 𝗣𝗲𝗿𝗺𝗶𝘀𝘀𝗶𝗼𝗻   : ${permissionText}
+
+⚡️ 𝙈𝙖𝙙𝙚 𝙗𝙮 𝙏𝙊𝙃𝙄𝘿𝙐𝙇 | 𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 ⚡️`;
+
+    return api.sendMessage(moduleInfo, threadID, messageID);
 }
 
-module.exports.run = function ({ api, event, args, getText }) {
+module.exports.run = function ({ api, event, args }) {
     const { commands } = global.client;
     const { threadID, messageID } = event;
     const command = commands.get((args[0] || "").toLowerCase());
     const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
-    const { autoUnsend, delayUnsend } = global.configModule[this.config.name];
+    const { autoUnsend, delayUnsend } = global.configModule[this.config.name] || { autoUnsend: false, delayUnsend: 20 };
     const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
 
     // --------- all command group view ----------
@@ -128,15 +122,18 @@ module.exports.run = function ({ api, event, args, getText }) {
 
     // ---------- single module info ----------
     const permissionText = (command.config.hasPermssion == 0) ? "User" : (command.config.hasPermssion == 1) ? "Admin Group" : "Admin Bot";
-    const leiamname = getText("moduleInfo",
-        command.config.name,
-        command.config.description || "𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 𝙝𝙖𝙧 𝙘𝙤𝙢𝙢𝙖𝙣𝙙 𝙖𝙧𝙚 𝙢𝙖𝙜𝙞𝙘𝙖𝙡, 𝙚𝙖𝙨𝙮 𝙖𝙣𝙙 𝙨𝙢𝙖𝙧𝙩! 𝘾𝙝𝙖𝙩, 𝙛𝙪𝙣, 𝙪𝙩𝙞𝙡𝙞𝙩𝙮, 𝙖𝙣𝙙 𝙢𝙤𝙧𝙚 – 𝙖𝙡𝙬𝙖𝙮𝙨 𝙤𝙣 𝙮𝙤𝙪𝙧 𝙨𝙞𝙙𝙚. 💎",
-        `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`,
-        command.config.commandCategory,
-        command.config.cooldowns,
-        permissionText,
-        command.config.credits
-    );
+    const leiamname = `
+╔═────── ★ ★ ─────═╗
+        💫 𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 𝙈𝙊𝘿𝙐𝙇𝙀 𝙄𝙉𝙁𝙊 💫
+╚═────── ★ ★ ─────═╝
+🔹 𝗡𝗮𝗺𝗲         : ${command.config.name}
+🔸 𝗨𝘀𝗮𝗴𝗲        : ${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}
+📝 𝗗𝗲𝘀𝗰𝗿𝗶𝗽𝘁𝗶𝗼𝗻   : ${command.config.description || "𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 𝙝𝙖𝙧 𝙘𝙤𝙢𝙢𝙖𝙣𝙙 𝙖𝙧𝙚 𝙢𝙖𝙜𝙞𝙘𝙖𝙡, 𝙚𝙖𝙨𝙮 𝙖𝙣𝙙 𝙨𝙢𝙖𝙧𝙩! 𝘾𝙝𝙖𝙩, 𝙛𝙪𝙣, 𝙪𝙩𝙞𝙡𝙞𝙩𝙮, 𝙖𝙣𝙙 𝙢𝙤𝙧𝙚 – 𝙖𝙡𝙬𝙖𝙮𝙨 𝙤𝙣 𝙮𝙤𝙪𝙧 𝙨𝙞𝙙𝙚. 💎"}
+🌈 𝗖𝗮𝘁𝗲𝗴𝗼𝗿𝘆     : ${command.config.commandCategory}
+⏳ 𝗖𝗼𝗼𝗹𝗱𝗼𝘄𝗻     : ${command.config.cooldowns}s
+🔑 𝗣𝗲𝗿𝗺𝗶𝘀𝘀𝗶𝗼𝗻   : ${permissionText}
+
+⚡️ 𝙈𝙖𝙙𝙚 𝙗𝙮 ${command.config.credits || "𝙏𝙊𝙃𝙄𝘿𝙐𝙇"} | 𝙏𝙊𝙃𝙄-𝘽𝙊𝙏 ⚡️`;
 
     api.sendMessage(leiamname, threadID, (err, info) => {
         if (autoUnsend == false) {
