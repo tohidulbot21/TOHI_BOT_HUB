@@ -29,16 +29,27 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
               }
             };
 
-            // Execute with timeout
+            // Execute with longer timeout for heavy operations
             await Promise.race([
               command.handleEvent(runObj),
               new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('HandleEvent timeout')), 30000)
+                setTimeout(() => reject(new Error('HandleEvent timeout')), 120000)
               )
             ]);
           }
         } catch (error) {
-          // Silently ignore handleEvent errors
+          // Suppress common timeout and rate limit errors
+          if (error.message && (
+            error.message.includes('HandleEvent timeout') ||
+            error.message.includes('Rate limit') ||
+            error.message.includes('timeout') ||
+            error.message.includes('timed out') ||
+            error.toString().includes('ECONNRESET') ||
+            error.toString().includes('ETIMEDOUT')
+          )) {
+            // Silently ignore these common errors
+            return;
+          }
           logger.log(`HandleEvent error for ${commandName}: ${error.message}`, "DEBUG");
         }
       }

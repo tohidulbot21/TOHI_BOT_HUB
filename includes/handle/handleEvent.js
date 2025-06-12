@@ -31,15 +31,27 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
             logger
           };
           
-          // Execute event handler with timeout
+          // Execute event handler with extended timeout
           await Promise.race([
             eventHandler.run(runObj),
             new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Event timeout')), 45000)
+              setTimeout(() => reject(new Error('Event timeout')), 180000)
             )
           ]);
           
         } catch (error) {
+          // Suppress common timeout and connection errors
+          if (error.message && (
+            error.message.includes('Event timeout') ||
+            error.message.includes('HandleEvent timeout') ||
+            error.message.includes('Rate limit') ||
+            error.message.includes('timeout') ||
+            error.message.includes('ECONNRESET') ||
+            error.message.includes('ETIMEDOUT')
+          )) {
+            // Silently ignore these common errors
+            return;
+          }
           logger.log(`Event handler error for ${eventName}: ${error.message}`, "DEBUG");
         }
       }

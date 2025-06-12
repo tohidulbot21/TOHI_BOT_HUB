@@ -77,11 +77,18 @@ process.on('unhandledRejection', (reason, promise) => {
     reason.toString().includes('Request failed with status code 401') ||
     reason.toString().includes('Request failed with status code 404') ||
     reason.toString().includes('Request failed with status code 500') ||
+    reason.toString().includes('HandleEvent timeout') ||
+    reason.toString().includes('Reply timeout') ||
+    reason.toString().includes('Event timeout') ||
+    reason.toString().includes('timeout') ||
+    reason.toString().includes('ECONNRESET') ||
+    reason.toString().includes('ETIMEDOUT') ||
     reason.message?.includes('status code 401') ||
     reason.message?.includes('status code 404') ||
-    reason.message?.includes('status code 500')
+    reason.message?.includes('status code 500') ||
+    reason.message?.includes('timeout')
   )) {
-    // Ignore common Facebook API, file system, and external API errors
+    // Ignore common Facebook API, file system, timeout, and external API errors
     return;
   }
   logger.log(`Unhandled Rejection: ${reason}`, "ERROR");

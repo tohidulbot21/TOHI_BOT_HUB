@@ -52,7 +52,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
           await Promise.race([
             command.onReply(runObj),
             new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Reply timeout')), 60000)
+              setTimeout(() => reject(new Error('Reply timeout')), 300000)
             )
           ]);
           executed = true;
@@ -62,7 +62,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
           await Promise.race([
             command.handleReply(runObj),
             new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Reply timeout')), 60000)
+              setTimeout(() => reject(new Error('Reply timeout')), 300000)
             )
           ]);
           executed = true;
@@ -74,7 +74,19 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
         }
         
       } catch (error) {
-        logger.log(`Reply handler error for ${name}: ${error.message}`, "DEBUG");
+        // Suppress common timeout and connection errors
+        if (error.message && (
+          error.message.includes('Reply timeout') ||
+          error.message.includes('HandleEvent timeout') ||
+          error.message.includes('Rate limit') ||
+          error.message.includes('timeout') ||
+          error.message.includes('ECONNRESET') ||
+          error.message.includes('ETIMEDOUT')
+        )) {
+          // Silently ignore these common errors
+        } else {
+          logger.log(`Reply handler error for ${name}: ${error.message}`, "DEBUG");
+        }
         
         // Remove failed reply handler to prevent memory leaks
         handleReply.splice(replyIndex, 1);

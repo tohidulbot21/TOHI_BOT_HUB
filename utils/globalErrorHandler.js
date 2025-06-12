@@ -21,10 +21,16 @@ class GlobalErrorHandler {
       this.errorLog = this.errorLog.slice(0, this.maxLogSize);
     }
 
-    // Don't log rate limit or timeout errors to reduce spam
+    // Don't log rate limit, timeout, or connection errors to reduce spam
     if (!error.toString().includes('Rate limited') && 
         !error.toString().includes('timeout') && 
         !error.toString().includes('timed out') &&
+        !error.toString().includes('HandleEvent timeout') &&
+        !error.toString().includes('Reply timeout') &&
+        !error.toString().includes('Event timeout') &&
+        !error.toString().includes('ECONNRESET') &&
+        !error.toString().includes('ETIMEDOUT') &&
+        !error.toString().includes('ENOTFOUND') &&
         error.error !== 3252001) {
       console.error(`[${context}] ${error.message || error}`);
     }
