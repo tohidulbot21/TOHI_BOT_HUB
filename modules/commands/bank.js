@@ -309,24 +309,44 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
   }
 }
 
-module.exports.handleReply = async function ({ api, event, handleReply, Currencies }) {
+module.exports.handleReply = async function ({ api, event, handleReply, Currencies, Users }) {
   const axios = require('axios')
   const { senderID, messageID, threadID , body } = event;
   
-  const baseURL = handleReply.baseURL || "https://api.sdwdewhgdjwwdjs.repl.co/bank";
+  const baseURL = handleReply.baseURL || "http://127.0.0.1:3001/bank";
   
   // Enhanced API call function with error handling for replies
-  async function makeApiCall(endpoint, params = {}) {
+  async function makeApiCall(endpoint, params = {}, retries = 1) {
     const queryString = new URLSearchParams(params).toString();
     const url = `${baseURL}${endpoint}${queryString ? '?' + queryString : ''}`;
     
-    try {
-      const response = await axios.get(url, { timeout: 10000 });
-      return response.data;
-    } catch (error) {
-      console.log(`[BANK] Reply API Error: ${error.message}`);
-      throw new Error('Bank service is currently unavailable. Please try again later.');
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await axios.get(url, { 
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'TOHI-BOT-BANK/1.0',
+            'Accept': 'application/json'
+          }
+        });
+        return response.data;
+      } catch (error) {
+        console.log(`[BANK] Reply API Error (attempt ${attempt + 1}): ${error.message}`);
+        
+        if (error.response?.status === 429) {
+          if (attempt < retries) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            continue;
+          }
+        }
+        
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
     }
+    
+    throw new Error('Bank service is currently unavailable. Please try again later.');
   }
   
   try {
@@ -356,15 +376,34 @@ module.exports.handleReply = async function ({ api, event, handleReply, Currenci
             return api.sendMessage(`${res.message.noti}\n\n${res.message.data.message}`, handleReply.threadID);
         }
         case 'getMoney': {
-            const res = await makeApiCall('/get', {
-              ID: senderID,
-              money: handleReply.money,
-              password: body
-            });
-            if(res.status == false) return api.sendMessage(res.message, threadID, messageID);
-            await Currencies.increaseMoney(senderID, parseInt(handleReply.money))
-            api.sendMessage(`${res.message.noti}\n👤 Account holder: ${res.message.name}\n💰 Remaining balance: ${res.message.money}`, threadID, messageID);
-            return api.sendMessage(`${res.message.noti}\n👤 Account holder: ${res.message.name}\n💰 Remaining balance: ${res.message.money}`, handleReply.threadID);
+            const password = body.trim(); // Clean the password input
+            
+            if (!password) {
+              return api.sendMessage('❌ Password cannot be empty!', threadID, messageID);
+            }
+            
+            try {
+              const res = await makeApiCall('/get', {
+                ID: senderID,
+                money: handleReply.money,
+                password: password
+              });
+              
+              if(res.status == false) {
+                return api.sendMessage(`❌ ${res.message}`, threadID, messageID);
+              }
+              
+              await Currencies.increaseMoney(senderID, parseInt(handleReply.money));
+              
+              const successMsg = `${res.message.noti}\n👤 Account holder: ${res.message.name}\n💰 Remaining balance: $${res.message.money.toLocaleString()}`;
+              
+              api.sendMessage(successMsg, threadID, messageID);
+              return api.sendMessage(successMsg, handleReply.threadID);
+              
+            } catch (error) {
+              console.log(`[BANK] getMoney error: ${error.message}`);
+              return api.sendMessage('❌ Withdrawal failed. Please try again.', threadID, messageID);
+            }
         }
         case 'newPassword': {
             const res = await makeApiCall('/password', {

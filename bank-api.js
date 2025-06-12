@@ -164,13 +164,43 @@ async function getUserName(userId) {
     const usersData = await getUsersData();
     const bankData = await getBankData();
     
-    // Try to get name from bank data first (if exists and not undefined/null)
+    // First check usersData.json for the name
+    if (usersData[userId]?.name && usersData[userId].name !== 'undefined' && usersData[userId].name.trim()) {
+      return usersData[userId].name;
+    }
+    
+    // Then try to get name from bank data
     if (bankData.users[userId]?.name && bankData.users[userId].name !== 'undefined' && bankData.users[userId].name.trim()) {
       return bankData.users[userId].name;
     }
     
-    // If not in bank data or is undefined, try to get from Facebook API via Users module
-    // This would require the Users module to be passed in, but for now we'll try other sources
+    // Try to fetch from Facebook Graph API as fallback
+    try {
+      const axios = require('axios');
+      const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, {
+        timeout: 5000
+      });
+      
+      if (response.data && response.data.name) {
+        const fbName = response.data.name;
+        
+        // Update usersData with the fetched name
+        if (usersData[userId]) {
+          usersData[userId].name = fbName;
+          await saveUsersData(usersData);
+        }
+        
+        // Update bankData if user exists there
+        if (bankData.users[userId]) {
+          bankData.users[userId].name = fbName;
+          await saveBankData(bankData);
+        }
+        
+        return fbName;
+      }
+    } catch (fbError) {
+      console.log(`[BANK-API] Facebook API error for ${userId}: ${fbError.message}`);
+    }
     
     // For fallback, create a readable name from user ID
     return `User${userId.slice(-6)}`;
@@ -248,9 +278,30 @@ app.get('/bank/register', async (req, res) => {
 
     // Store bank-specific data with proper name handling
     const decodedName = decodeURI(name);
-    const finalName = (decodedName && decodedName !== 'undefined' && decodedName.trim()) 
+    let finalName = (decodedName && decodedName !== 'undefined' && decodedName.trim()) 
       ? decodedName 
-      : `User${senderID.slice(-6)}`;
+      : null;
+    
+    // If name is still not valid, try to get from Facebook
+    if (!finalName) {
+      try {
+        const axios = require('axios');
+        const response = await axios.get(`https://graph.facebook.com/${senderID}?fields=name&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, {
+          timeout: 5000
+        });
+        
+        if (response.data && response.data.name) {
+          finalName = response.data.name;
+        }
+      } catch (fbError) {
+        console.log(`[BANK-API] Facebook name fetch error: ${fbError.message}`);
+      }
+    }
+    
+    // Final fallback
+    if (!finalName) {
+      finalName = `User${senderID.slice(-6)}`;
+    }
       
     bankData.users[senderID] = {
       name: finalName,
