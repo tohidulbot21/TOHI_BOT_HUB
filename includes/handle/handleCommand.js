@@ -515,13 +515,8 @@ function levenshteinDistance(str1, str2) {
           
           logger.log(`Command "${command.config.name}" used by ${userName}`, "COMMAND");
           
-          // Execute command with timeout
-          const commandPromise = command.run(Obj);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Command timeout')), 30000)
-          );
-          
-          await Promise.race([commandPromise, timeoutPromise]);
+          // Execute command without timeout
+          await command.run(Obj);
           
           // Set cooldown only after successful execution
           if (timestamps && timestamps instanceof Map) {
@@ -542,13 +537,7 @@ function levenshteinDistance(str1, str2) {
       if (e.code === 'ENOENT' && e.path && e.path.includes('cache')) {
         // File not found in cache - ignore these errors
         logger.log(`Cache file not found (ignored): ${e.path}`, "DEBUG");
-      } else if (e.message === 'Command timeout') {
-        logger.log(`Command "${command?.config?.name || commandName}" timed out`, "WARNING");
-        try {
-          api.sendMessage("⏰ Command timed out. Please try again.", threadID, messageID);
-        } catch (sendError) {
-          // Silent fail
-        }
+      
       } else if (!shouldIgnoreError(e)) {
         logger.log(`Command error in "${command?.config?.name || commandName}": ${e.message}`, "ERROR");
         
