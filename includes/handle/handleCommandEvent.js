@@ -16,7 +16,17 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
               Users,
               Threads, 
               Currencies,
-              logger
+              logger,
+              getText: (key) => {
+                // Provide a fallback getText function
+                const fallbackMessages = {
+                  "levelup": "Congratulations {name}, being talkative helped you level up to level {level}!",
+                  "on": "on",
+                  "off": "off",
+                  "successText": "success notification rankup!"
+                };
+                return fallbackMessages[key] || `Message for ${key}`;
+              }
             };
 
             // Execute with timeout

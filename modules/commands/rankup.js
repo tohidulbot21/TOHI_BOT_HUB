@@ -27,7 +27,7 @@ module.exports.config = {
 };
 
 module.exports.handleEvent = async function({
-  api, event, Currencies, getText }) {
+  api, event, Currencies, getText, Threads }) {
   var { threadID, senderID } = event;
   const { loadImage, createCanvas } = require("canvas");
   const fs = global.nodemodule["fs-extra"];
@@ -77,7 +77,19 @@ module.exports.handleEvent = async function({
   } catch (error) {
     name = `User-${id1.slice(-6)}`;
   }
-    var messsage = (typeof thread.customRankup == "undefined") ? msg = getText("levelup") : msg = thread.customRankup;
+    // Fallback for getText function
+    const getTextSafe = (key) => {
+      if (typeof getText === 'function') {
+        return getText(key);
+      }
+      // Fallback messages
+      const fallbackMessages = {
+        "levelup": "Congratulations {name}, being talkative helped you level up to level {level}!"
+      };
+      return fallbackMessages[key] || `Message for ${key}`;
+    };
+    
+    var messsage = (typeof thread.customRankup == "undefined") ? msg = getTextSafe("levelup") : msg = thread.customRankup;
 
     messsage = messsage
       .replace(/\{name}/g, name)
