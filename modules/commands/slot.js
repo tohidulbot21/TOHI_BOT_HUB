@@ -22,8 +22,8 @@ module.exports.languages = {
     "missingInput": "the bet money must not be blank or a negative number.",
     "moneyBetNotEnough": "the money you betted is bigger than your balance.",
     "limitBet": "your bet is too low, the minimum is 50 pesos.",
-    "returnWin": "%1 | %2 | %3 \nyou won %4$",
-    "returnLose": "%1 | %2 | %3\nyou lost %4$"
+    "returnWin": "🎰 %1 | %2 | %3 🎰\nyou won %4$",
+    "returnLose": "🎰 %1 | %2 | %3 🎰\nyou lost %4$"
   }
 };
 
