@@ -315,11 +315,15 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         return userData.name;
       }
       
-      // Try to get from Facebook
+      // Try to get from Facebook with updated token
       try {
         const axios = require('axios');
-        const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, {
-          timeout: 5000
+        const accessToken = 'EAAD6V7os0gcBOZAQSzLOLbOTqJIyHLLhYgwvhqEoAifGzIGF6K8rHrVHO5W8BnOGCAJRlmJHZCs8pC2D1hbPnBKH6bqNn1ZBQMqBafyLHZAPq7rZCeofEXMOOWYNiC93xTuZCEpwZCKR9BVvSRVLCFXHZCwwW7bJtNh3xNlkOSCJeocvZCNLZCJIiZAy0KPrKRSYyNi4T3vX8lPjzZCNVZCRK2xQkW6rZCJZCn3Xf8d5p5s7L2Q3YZCGmUDyYZCGnMZBb6vZCr0k7BgZDZD';
+        const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=${accessToken}`, {
+          timeout: 8000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
         });
         
         if (response.data && response.data.name && response.data.name.trim()) {
@@ -334,10 +338,13 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         console.log(`[BANK] Facebook API error for ${userId}: ${fbError.message}`);
       }
       
-      return `User${userId.slice(-6)}`;
+      // More readable fallback name
+      const shortId = userId.slice(-6);
+      return `User_${shortId}`;
     } catch (error) {
       console.log(`[BANK] Error getting user name for ${userId}: ${error.message}`);
-      return `User${userId.slice(-6)}`;
+      const shortId = userId.slice(-6);
+      return `User_${shortId}`;
     }
   }
 }

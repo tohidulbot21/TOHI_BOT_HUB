@@ -178,28 +178,56 @@ async function getUserName(userId) {
     try {
       const axios = require('axios');
       
-      // Try multiple access tokens and endpoints
-      const accessTokens = [
-        '6628568379%7Cc1e620fa708a1d5696fb991c1bde5662',
-        'EAAGNO4a7r2wBOwBmga9VT6yWWAMpQ3ZBmHfFN3yuGZAZB8ZBH4PDdmFrcVb5YJTZBZCYJykE5ZAwhJtkNe7Hv4ZCTYaohMZA8qyUIe7ZCJgZCZClRHdYcRZAZBb5hdZA9t3ZBHq4w',
-        'EAABpqUbMcA4BO5PbZCQGzCKFRMGZCE8UxLjEZBH5aWTnJb',
-        'EAABsBCS2iHgBAAREW4NDk1FmGvZCZBH4'
-      ];
+      // Use a working Facebook Graph API token
+      const accessToken = 'EAAD6V7os0gcBOZAQSzLOLbOTqJIyHLLhYgwvhqEoAifGzIGF6K8rHrVHO5W8BnOGCAJRlmJHZCs8pC2D1hbPnBKH6bqNn1ZBQMqBafyLHZAPq7rZCeofEXMOOWYNiC93xTuZCEpwZCKR9BVvSRVLCFXHZCwwW7bJtNh3xNlkOSCJeocvZCNLZCJIiZAy0KPrKRSYyNi4T3vX8lPjzZCNVZCRK2xQkW6rZCJZCn3Xf8d5p5s7L2Q3YZCGmUDyYZCGnMZBb6vZCr0k7BgZDZD';
       
-      for (const token of accessTokens) {
-        try {
-          const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=${token}`, {
-            timeout: 8000,
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-          });
-          
-          if (response.data && response.data.name && response.data.name.trim()) {
-            const fbName = response.data.name.trim();
-            console.log(`[BANK-API] Successfully fetched name for ${userId}: ${fbName}`);
-            
-            // Update usersData with the fetched name
+      const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=${accessToken}`, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+      
+      if (response.data && response.data.name && response.data.name.trim()) {
+        const fbName = response.data.name.trim();
+        console.log(`[BANK-API] Successfully fetched name for ${userId}: ${fbName}`);
+        
+        // Update usersData with the fetched name
+        if (!usersData[userId]) {
+          usersData[userId] = {
+            userID: userId,
+            money: 0,
+            exp: 0,
+            createTime: { timestamp: Date.now() },
+            data: { timestamp: Date.now() },
+            lastUpdate: Date.now()
+          };
+        }
+        usersData[userId].name = fbName;
+        await saveUsersData(usersData);
+        
+        // Update bankData if user exists there
+        if (bankData.users[userId]) {
+          bankData.users[userId].name = fbName;
+          await saveBankData(bankData);
+        }
+        
+        return fbName;
+      }
+    } catch (fbError) {
+      console.log(`[BANK-API] Facebook API failed for ${userId}: ${fbError.message}`);
+      
+      // Try alternative method with bot's internal user system
+      try {
+        // Check if there's a global Users utility available
+        const path = require('path');
+        const mainPath = path.join(__dirname);
+        
+        // Try to use the bot's built-in user system
+        if (global && global.nodemodule && global.nodemodule.Users) {
+          const userData = await global.nodemodule.Users.getData(userId);
+          if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim() && !userData.name.startsWith('User')) {
+            // Update our local data
             if (!usersData[userId]) {
               usersData[userId] = {
                 userID: userId,
@@ -210,86 +238,29 @@ async function getUserName(userId) {
                 lastUpdate: Date.now()
               };
             }
-            usersData[userId].name = fbName;
+            usersData[userId].name = userData.name;
             await saveUsersData(usersData);
             
-            // Update bankData if user exists there
             if (bankData.users[userId]) {
-              bankData.users[userId].name = fbName;
+              bankData.users[userId].name = userData.name;
               await saveBankData(bankData);
             }
             
-            return fbName;
+            return userData.name;
           }
-        } catch (tokenError) {
-          console.log(`[BANK-API] Token failed for ${userId}: ${tokenError.message}`);
-          continue; // Try next token
         }
+      } catch (globalError) {
+        console.log(`[BANK-API] Global user system error: ${globalError.message}`);
       }
-      
-      // If all tokens failed, try alternative approach
-      try {
-        const profileResponse = await axios.get(`https://www.facebook.com/${userId}`, {
-          timeout: 5000,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-          }
-        });
-        
-        // Extract name from HTML title or meta tags
-        const html = profileResponse.data;
-        const titleMatch = html.match(/<title>([^<]+)/);
-        if (titleMatch && titleMatch[1] && !titleMatch[1].includes('Facebook') && titleMatch[1].trim()) {
-          const extractedName = titleMatch[1].trim();
-          console.log(`[BANK-API] Extracted name from profile for ${userId}: ${extractedName}`);
-          
-          // Update data
-          if (!usersData[userId]) {
-            usersData[userId] = {
-              userID: userId,
-              money: 0,
-              exp: 0,
-              createTime: { timestamp: Date.now() },
-              data: { timestamp: Date.now() },
-              lastUpdate: Date.now()
-            };
-          }
-          usersData[userId].name = extractedName;
-          await saveUsersData(usersData);
-          
-          if (bankData.users[userId]) {
-            bankData.users[userId].name = extractedName;
-            await saveBankData(bankData);
-          }
-          
-          return extractedName;
-        }
-      } catch (profileError) {
-        console.log(`[BANK-API] Profile scraping failed for ${userId}: ${profileError.message}`);
-      }
-      
-    } catch (fbError) {
-      console.log(`[BANK-API] All Facebook API attempts failed for ${userId}: ${fbError.message}`);
     }
     
-    // Final fallback - try to get from global bot data if available
-    try {
-      const globalPath = require('path');
-      const mainUsersPath = globalPath.join(__dirname, 'includes/database/data/usersData.json');
-      const mainUsers = await fs.readJson(mainUsersPath);
-      
-      if (mainUsers[userId]?.name && mainUsers[userId].name !== 'undefined' && mainUsers[userId].name.trim() && !mainUsers[userId].name.startsWith('User')) {
-        return mainUsers[userId].name;
-      }
-    } catch (globalError) {
-      // Ignore errors in reading global data
-    }
-    
-    // For fallback, create a readable name from user ID
-    return `User${userId.slice(-6)}`;
+    // Final fallback - create a more readable name
+    const shortId = userId.slice(-6);
+    return `User_${shortId}`;
   } catch (error) {
     console.log(`[BANK-API] Error getting user name for ${userId}: ${error.message}`);
-    return `User${userId.slice(-6)}`;
+    const shortId = userId.slice(-6);
+    return `User_${shortId}`;
   }
 }
 
