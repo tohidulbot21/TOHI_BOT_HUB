@@ -14,14 +14,14 @@ module.exports.run = async function ({ event, args, api }) {
   const threadSetting = global.data.threadData.get(event.threadID) || {};
   var prefix = threadSetting.PREFIX || global.config.PREFIX;
   var input = args[0];
-  if (!input) return api.sendMessage(`VPlease enter the correct format ${prefix}age [day/month/Year of Birth]`,event.threadID,event.messageID);
+  if (!input) return api.sendMessage(`Please enter the correct format ${prefix}age [day/month/year of birth]`,event.threadID,event.messageID);
   var cc = input.split("/");
   var ngay1 = parseInt(cc[0]);
-  if (!ngay1 || isNaN(ngay1) || ngay1 > 31 || ngay1 < 1) return api.sendMessage("Ngày sinh không hợp lệ!",event.threadID,event.messageID);
+  if (!ngay1 || isNaN(ngay1) || ngay1 > 31 || ngay1 < 1) return api.sendMessage("Invalid birth day!",event.threadID,event.messageID);
   var thang1 = parseInt(cc[1]);
-  if (!thang1 || isNaN(thang1) || thang1 > 12 || thang1 < 1) return api.sendMessage("Tháng sinh không hợp lệ!",event.threadID,event.messageID);
+  if (!thang1 || isNaN(thang1) || thang1 > 12 || thang1 < 1) return api.sendMessage("Invalid birth month!",event.threadID,event.messageID);
   var nam1 = parseInt(cc[2]);
-  if (!nam1) return api.sendMessage("Năm sinh không hợp lệ!",event.threadID,event.messageID);
+  if (!nam1) return api.sendMessage("Invalid birth year!",event.threadID,event.messageID);
   const moment = require("moment-timezone");
   var hientai = moment.tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY HH:mm:ss");
   var concac = `${hientai}`;
@@ -50,5 +50,5 @@ module.exports.run = async function ({ event, args, api }) {
   var phut = Math.round(xphut * 100)/100;
   var giay = Math.round((phut*60 + ss)* 100)/100;
   // Nỗ não :>
-  return api.sendMessage(`-Ngày tháng năm sinh: ${input}\n\n-Số năm đã qua: ${nam} năm \n-Số tháng đã qua: ${thang} tháng \n-Số tuần đã qua: ${tuan} tuần \n-Số ngày đã qua: ${ngay} ngày \n-Số giờ đã qua: ${gio} giờ \n-Số phút đã qua: ${phut} phút \n-Số giây đã qua: ${giay} giây `,event.threadID,event.messageID);
+  return api.sendMessage(`- Date of birth: ${input}\n\n- Years passed: ${nam} years\n- Months passed: ${thang} months\n- Weeks passed: ${tuan} weeks\n- Days passed: ${ngay} days\n- Hours passed: ${gio} hours\n- Minutes passed: ${phut} minutes\n- Seconds passed: ${giay} seconds`,event.threadID,event.messageID);
     }

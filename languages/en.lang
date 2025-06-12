@@ -93,3 +93,6 @@ work.job4=You finished working as a %1, earning %2$
 work.job5=Your shift as a %1 ended, you got %2$
 work.cooldown=You need to wait %1 more minutes before working again
 work.notEnoughMoney=You don't have enough money to work
+
+# users command
+users.returnResult=Here are the matching results: \n
