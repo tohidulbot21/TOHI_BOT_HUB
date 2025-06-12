@@ -76,3 +76,11 @@ handleSchedule.exectuteError=Having some error when schedule at module %1, error
 # utils/index.js
 
 utils.throwError=[!] The command you are using is not syntax correct, please use %1help %2 for more usage details
+
+# slot command
+
+slot.missingInput=the bet money must not be blank or a negative number.
+slot.moneyBetNotEnough=the money you betted is bigger than your balance.
+slot.limitBet=your bet is too low, the minimum is 50 pesos.
+slot.returnWin=🎰 %1 | %2 | %3 🎰\nyou won %4$
+slot.returnLose=🎰 %1 | %2 | %3 🎰\nyou lost %4$

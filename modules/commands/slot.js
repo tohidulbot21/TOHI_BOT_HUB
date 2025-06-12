@@ -24,6 +24,27 @@ module.exports.languages = {
     "limitBet": "your bet is too low, the minimum is 50 pesos.",
     "returnWin": "🎰 %1 | %2 | %3 🎰\nyou won %4$",
     "returnLose": "🎰 %1 | %2 | %3 🎰\nyou lost %4$"
+  },
+  "bd": {
+    "missingInput": "বাজির টাকা খালি বা নেতিবাচক সংখ্যা হতে পারে না।",
+    "moneyBetNotEnough": "আপনার বাজি ধরা টাকা আপনার ব্যালেন্সের চেয়ে বেশি।",
+    "limitBet": "আপনার বাজি খুব কম, সর্বনিম্ন ৫০ টাকা।",
+    "returnWin": "🎰 %1 | %2 | %3 🎰\nআপনি %4$ জিতেছেন",
+    "returnLose": "🎰 %1 | %2 | %3 🎰\nআপনি %4$ হেরেছেন"
+  },
+  "tl": {
+    "missingInput": "ang pera sa taya ay hindi dapat blangko o negatibong numero.",
+    "moneyBetNotEnough": "ang pera na inyong tinaya ay mas malaki sa inyong balance.",
+    "limitBet": "ang inyong taya ay masyadong mababa, minimum ay 50 pesos.",
+    "returnWin": "🎰 %1 | %2 | %3 🎰\nnanalo kayo ng %4$",
+    "returnLose": "🎰 %1 | %2 | %3 🎰\nnatalo kayo ng %4$"
+  },
+  "ar": {
+    "missingInput": "مبلغ الرهان يجب ألا يكون فارغًا أو رقمًا سالبًا.",
+    "moneyBetNotEnough": "المال الذي راهنت عليه أكبر من رصيدك.",
+    "limitBet": "رهانك منخفض جدًا، الحد الأدنى 50 بيزو.",
+    "returnWin": "🎰 %1 | %2 | %3 🎰\nلقد ربحت %4$",
+    "returnLose": "🎰 %1 | %2 | %3 🎰\nلقد خسرت %4$"
   }
 };
 
@@ -34,6 +55,30 @@ module.exports.run = async function ({
   Currencies,
   getText
 }) {
+  // Fallback function for getText if language key is not found
+  const getTextSafe = (key, ...args) => {
+    try {
+      return getText(key, ...args);
+    } catch (error) {
+      // Fallback to English if current language key is missing
+      const fallbackTexts = {
+        "missingInput": "the bet money must not be blank or a negative number.",
+        "moneyBetNotEnough": "the money you betted is bigger than your balance.",
+        "limitBet": "your bet is too low, the minimum is 50 pesos.",
+        "returnWin": "🎰 %1 | %2 | %3 🎰\nyou won %4$",
+        "returnLose": "🎰 %1 | %2 | %3 🎰\nyou lost %4$"
+      };
+      
+      if (fallbackTexts[key]) {
+        let text = fallbackTexts[key];
+        args.forEach((arg, index) => {
+          text = text.replace(`%${index + 1}`, arg);
+        });
+        return text;
+      }
+      return `Language key "${key}" not found`;
+    }
+  };
   const { threadID, messageID, senderID } = event;
   const { getData, increaseMoney, decreaseMoney } = Currencies;
 
@@ -42,13 +87,13 @@ module.exports.run = async function ({
   const moneyBet = parseInt(args[0]);
 
   if (isNaN(moneyBet) || moneyBet <= 0) {
-    return api.sendMessage(getText("missingInput"), threadID, messageID);
+    return api.sendMessage(getTextSafe("missingInput"), threadID, messageID);
   }
   if (moneyBet > moneyUser) {
-    return api.sendMessage(getText("moneyBetNotEnough"), threadID, messageID);
+    return api.sendMessage(getTextSafe("moneyBetNotEnough"), threadID, messageID);
   }
   if (moneyBet < 50) {
-    return api.sendMessage(getText("limitBet"), threadID, messageID);
+    return api.sendMessage(getTextSafe("limitBet"), threadID, messageID);
   }
 
   const number = [];
@@ -69,9 +114,9 @@ module.exports.run = async function ({
   const slotDisplay = `${slotItems[number[0]]} | ${slotItems[number[1]]} | ${slotItems[number[2]]}`;
   if (win) {
     await increaseMoney(senderID, reward);
-    return api.sendMessage(getText("returnWin", slotItems[number[0]], slotItems[number[1]], slotItems[number[2]], reward), threadID, messageID);
+    return api.sendMessage(getTextSafe("returnWin", slotItems[number[0]], slotItems[number[1]], slotItems[number[2]], reward), threadID, messageID);
   } else {
     await decreaseMoney(senderID, moneyBet);
-    return api.sendMessage(getText("returnLose", slotItems[number[0]], slotItems[number[1]], slotItems[number[2]], moneyBet), threadID, messageID);
+    return api.sendMessage(getTextSafe("returnLose", slotItems[number[0]], slotItems[number[1]], slotItems[number[2]], moneyBet), threadID, messageID);
   }
 };
