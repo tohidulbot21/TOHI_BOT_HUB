@@ -26,19 +26,24 @@ module.exports.handleReply = async function ({ api, event, handleReply }) {
   const { createReadStream, createWriteStream, unlinkSync, statSync } =
     global.nodemodule["fs-extra"];
 
+  // Validate user input
+  const selection = parseInt(event.body.trim());
+  if (isNaN(selection) || selection < 1 || selection > handleReply.link.length) {
+    return api.sendMessage(`❌ Invalid selection! Please reply with a number between 1 and ${handleReply.link.length}`, event.threadID, event.messageID);
+  }
+
+  const selectedIndex = selection - 1;
+  const selectedLink = `https://www.youtube.com/watch?v=${handleReply.link[selectedIndex]}`;
+
   try {
-    const info = await ytdl.getInfo(handleReply.link[event.body - 1]);
+    const info = await ytdl.getInfo(selectedLink);
     let body = info.videoDetails.title;
-    api.sendMessage(
-      `Processing audio... !\n──────────\n${body}\n──────────\nPlease Wait !`,
-      event.threadID,
-      (err, info) =>
-        setTimeout(() => {
-          api.unsendMessage(info.messageID);
-        }, 10000),
+    const processingMsg = await api.sendMessage(
+      `🎵 Processing audio...\n──────────\n${body}\n──────────\nPlease Wait!`,
+      event.threadID
     );
 
-    const stream = ytdl(handleReply.link[event.body - 1], {
+    const stream = ytdl(selectedLink, {
       filter: "audioonly",
       quality: "highestaudio",
     });

@@ -25,9 +25,9 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
       // Get command
       const { commands } = global.client;
       const command = commands.get(name);
-      if (!command || !command.onReply) return;
+      if (!command) return;
       
-      // Create run object
+      // Create run object for both onReply and handleReply methods
       const runObj = {
         api,
         event,
@@ -35,25 +35,43 @@ module.exports = function ({ api, Users, Threads, Currencies, logger }) {
         Threads,
         Currencies,
         Reply: reply,
+        handleReply: reply,  // For backward compatibility
         logger
       };
       
       try {
-        // Execute onReply with timeout
-        await Promise.race([
-          command.onReply(runObj),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Reply timeout')), 60000)
-          )
-        ]);
+        let executed = false;
         
-        // Remove reply handler after successful execution
-        handleReply.splice(replyIndex, 1);
+        // Try onReply method first (newer format)
+        if (command.onReply && typeof command.onReply === 'function') {
+          await Promise.race([
+            command.onReply(runObj),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Reply timeout')), 60000)
+            )
+          ]);
+          executed = true;
+        }
+        // Try handleReply method (older format)
+        else if (command.handleReply && typeof command.handleReply === 'function') {
+          await Promise.race([
+            command.handleReply(runObj),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Reply timeout')), 60000)
+            )
+          ]);
+          executed = true;
+        }
+        
+        if (executed) {
+          // Remove reply handler after successful execution
+          handleReply.splice(replyIndex, 1);
+        }
         
       } catch (error) {
         logger.log(`Reply handler error for ${name}: ${error.message}`, "DEBUG");
         
-        // Remove failed reply handler
+        // Remove failed reply handler to prevent memory leaks
         handleReply.splice(replyIndex, 1);
       }
       
