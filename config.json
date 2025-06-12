@@ -128,8 +128,8 @@
     "SOUNDCLOUD_API": "MMJhwmfTYJVFm9TiUdmYYyrf6Pzpzf3YN1"
   },
   "BANK_API": {
-    "BASE_URL": "https://api.sdwdewhgdjwwdjs.repl.co/bank",
+    "BASE_URL": "http://0.0.0.0:3001/bank",
     "ENABLED": true,
-    "FALLBACK_URL": "https://your-backup-api.repl.co/bank"
+    "FALLBACK_URL": "http://localhost:3001/bank"
   }
 }

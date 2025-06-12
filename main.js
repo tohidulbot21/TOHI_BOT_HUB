@@ -83,7 +83,7 @@ process.on('uncaughtException', (error) => {
     // Ignore cache file errors
     return;
   }
-  
+
   logger.log(`Uncaught Exception: ${error.message}`, "ERROR");
 
   // Handle critical errors that need restart
