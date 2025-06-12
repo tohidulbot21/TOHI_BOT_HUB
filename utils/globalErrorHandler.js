@@ -22,8 +22,11 @@ class GlobalErrorHandler {
       this.errorLog = this.errorLog.slice(0, this.maxLogSize);
     }
 
-    // Don't log rate limit errors to reduce spam
-    if (!error.toString().includes('Rate limited') && error.error !== 3252001) {
+    // Don't log rate limit or timeout errors to reduce spam
+    if (!error.toString().includes('Rate limited') && 
+        !error.toString().includes('timeout') && 
+        !error.toString().includes('timed out') &&
+        error.error !== 3252001) {
       console.error(`[${context}] ${error.message || error}`);
     }
   }

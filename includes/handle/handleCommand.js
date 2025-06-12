@@ -5,45 +5,45 @@ const DUPLICATE_TIMEOUT = 3000; // 3 seconds
 // Define shouldIgnoreError function to handle specific errors
 function shouldIgnoreError(error) {
   if (!error) return false;
-  
+
   const errorStr = error.toString().toLowerCase();
   const errorMessage = error.message ? error.message.toLowerCase() : '';
-  
+
   // Facebook spam protection errors
   if (error.error === 1390008 || errorStr.includes("can't use this feature") || errorStr.includes("spam")) {
     return true;
   }
-  
+
   // Content availability errors
   if (error.error === 1357031 || errorStr.includes('content is no longer available') || errorStr.includes('content you requested cannot be displayed')) {
     return true;
   }
-  
+
   // Rate limit errors
   if (errorStr.includes('rate limit') || errorStr.includes('429') || error.error === 3252001) {
     return true;
   }
-  
+
   // User not found errors
   if (errorStr.includes('user id') && errorStr.includes('does not exist')) {
     return true;
   }
-  
+
   // Network timeout errors
   if (errorStr.includes('timeout') || errorStr.includes('network')) {
     return true;
   }
-  
+
   // Facebook API temporary errors
   if (errorStr.includes('temporary') || errorStr.includes('try again')) {
     return true;
   }
-  
+
   // Permission and blocked action errors
   if (errorStr.includes('blocked') || errorStr.includes('permission') || error.blockedAction) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -106,15 +106,15 @@ function levenshteinDistance(str1, str2) {
 
     // Simplified duplicate prevention
     const messageKey = `${event.threadID}_${event.messageID}_${Date.now()}`;
-    
+
     // Quick duplicate check without blocking
     if (processedMessages.has(event.messageID)) {
       return;
     }
-    
+
     // Mark message as processed
     processedMessages.set(event.messageID, Date.now());
-    
+
     // Clean old entries less frequently
     if (processedMessages.size > 500) {
       const now = Date.now();
@@ -491,7 +491,7 @@ function levenshteinDistance(str1, str2) {
       if (command && typeof command.run === "function") {
         // Set activeCmd to prevent concurrent execution
         activeCmd = true;
-        
+
         try {
           // Get user name with better fallback
           let userName = `User-${senderID.slice(-6)}`;
@@ -512,12 +512,12 @@ function levenshteinDistance(str1, str2) {
               // Use default name
             }
           }
-          
+
           logger.log(`Command "${command.config.name}" used by ${userName}`, "COMMAND");
-          
+
           // Execute command without timeout
           await command.run(Obj);
-          
+
           // Set cooldown only after successful execution
           if (timestamps && timestamps instanceof Map) {
             timestamps.set(senderID, dateNow);
@@ -532,15 +532,15 @@ function levenshteinDistance(str1, str2) {
     } catch (e) {
       // Reset activeCmd on error
       activeCmd = false;
-      
+
       // Enhanced error handling
       if (e.code === 'ENOENT' && e.path && e.path.includes('cache')) {
         // File not found in cache - ignore these errors
         logger.log(`Cache file not found (ignored): ${e.path}`, "DEBUG");
-      
+
       } else if (!shouldIgnoreError(e)) {
         logger.log(`Command error in "${command?.config?.name || commandName}": ${e.message}`, "ERROR");
-        
+
         // Only send error message for critical errors
         if (!e.message.includes('rate limit') && 
             !e.message.includes('timeout') && 
@@ -558,7 +558,6 @@ function levenshteinDistance(str1, str2) {
         }
       }
     }
-    activeCmd = false;
 
     if (!command) {
       // Check if command exists by alias
