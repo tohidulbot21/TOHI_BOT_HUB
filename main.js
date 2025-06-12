@@ -44,7 +44,7 @@ try {
 
 // Initialize bank API server
 try {
-  const { startBankAPI } = require('./bank-api.js');
+  const { startBankAPI } = require('./includes/database/bank-api.js');
   startBankAPI();
   logger.log("Bank API server initialized successfully", "BANK-API");
 } catch (error) {
