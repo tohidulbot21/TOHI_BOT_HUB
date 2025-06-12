@@ -78,3 +78,13 @@ handleSchedule.exectuteError=Nagkakaroon ng ilang error kapag naka-iskedyul sa m
 # utils/index.js
 
 utils.throwError=[!] Ang command na iyong ginagamit ay hindi tama ang syntax, mangyaring gamitin ang %1help %2 para sa higit pang mga detalye ng paggamit
+
+
+# work command
+work.job1=Nagtrabaho ka bilang %1 at kumita ng %2$
+work.job2=Natapos mo ang trabahong %1 at nakatanggap ng %2$
+work.job3=Ang iyong trabahong %1 ay nagbayad sa iyo ng %2$
+work.job4=Natapos mo ang pagiging %1, kumita ng %2$
+work.job5=Natapos ang iyong shift bilang %1, nakakuha ka ng %2$
+work.cooldown=Kailangan mong maghintay ng %1 pang minuto bago magtrabaho ulit
+work.notEnoughMoney=Wala kang sapat na pera para magtrabaho

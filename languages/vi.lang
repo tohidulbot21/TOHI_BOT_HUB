@@ -87,3 +87,12 @@ slot.moneyBetNotEnough=[ SLOT ] Số tiền bạn đặt lớn hơn hoặc bằn
 slot.limitBet=[ SLOT ] Số coin đặt không được dưới 50$!
 slot.returnWin=🎰 %1 | %2 | %3 🎰\nBạn đã thắng với %4$
 slot.returnLose=🎰 %1 | %2 | %3 🎰\nBạn đã thua và mất %4$
+
+# work command
+work.job1=Bạn đã làm việc như một %1 và kiếm được %2$
+work.job2=Bạn đã hoàn thành công việc %1 và nhận được %2$
+work.job3=Công việc %1 của bạn đã trả cho bạn %2$
+work.job4=Bạn đã hoàn thành công việc như một %1, kiếm được %2$
+work.job5=Ca làm việc %1 của bạn đã kết thúc, bạn nhận được %2$
+work.cooldown=Bạn cần đợi thêm %1 phút nữa trước khi làm việc lại
+work.notEnoughMoney=Bạn không có đủ tiền để làm việc

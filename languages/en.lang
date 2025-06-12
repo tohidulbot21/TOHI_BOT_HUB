@@ -84,3 +84,12 @@ slot.moneyBetNotEnough=the money you betted is bigger than your balance.
 slot.limitBet=your bet is too low, the minimum is 50 pesos.
 slot.returnWin=🎰 %1 | %2 | %3 🎰\nyou won %4$
 slot.returnLose=🎰 %1 | %2 | %3 🎰\nyou lost %4$
+
+# work command
+work.job1=You worked as a %1 and earned %2$
+work.job2=You completed a %1 job and received %2$
+work.job3=Your %1 work paid you %2$
+work.job4=You finished working as a %1, earning %2$
+work.job5=Your shift as a %1 ended, you got %2$
+work.cooldown=You need to wait %1 more minutes before working again
+work.notEnoughMoney=You don't have enough money to work
