@@ -34,11 +34,41 @@ module.exports = function ({ api }) {
             if (!userID) throw new Error("User ID cannot be blank");
             if (isNaN(userID)) throw new Error("Invalid user ID");
             
-            const globalErrorHandler = require('../../utils/globalErrorHandler');
-            const userInfo = await globalErrorHandler.rateLimitedGetUserInfo(api, userID);
-            return userInfo[userID]?.name || `User-${userID.slice(-6)}`;
+            // First check if we have cached name in userData
+            const userData = usersData[userID];
+            if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim() && !userData.name.startsWith('User-')) {
+                return userData.name;
+            }
+            
+            // Try to get from Facebook API
+            try {
+                const globalErrorHandler = require('../../utils/globalErrorHandler');
+                const userInfo = await globalErrorHandler.rateLimitedGetUserInfo(api, userID);
+                
+                if (userInfo[userID]?.name && userInfo[userID].name.trim()) {
+                    const name = userInfo[userID].name.trim();
+                    
+                    // Cache the name in our database
+                    if (!usersData[userID]) {
+                        await createData(userID);
+                    }
+                    usersData[userID].name = name;
+                    await saveData(usersData);
+                    
+                    return name;
+                }
+            } catch (apiError) {
+                console.log(`[USERS] API error for ${userID}: ${apiError.message}`);
+            }
+            
+            // Fallback to generating a name
+            const shortId = userID.slice(-6);
+            return `User_${shortId}`;
+            
         } catch (error) {
-            return `User-${userID.slice(-6)}`;
+            console.log(`[USERS] Error getting name for ${userID}: ${error.message}`);
+            const shortId = userID.slice(-6);
+            return `User_${shortId}`;
         }
     }
 

@@ -316,10 +316,20 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         return userData.name;
       }
       
-      // Try to get from bot's built-in getUserInfo
+      // Try to get name using Users.getNameUser (which has better error handling)
+      try {
+        const name = await Users.getNameUser(userId);
+        if (name && name !== 'undefined' && !name.startsWith('User-') && name.trim()) {
+          return name;
+        }
+      } catch (userError) {
+        console.log(`[BANK] Users.getNameUser error for ${userId}: ${userError.message}`);
+      }
+      
+      // Try to get from bot's built-in getUserInfo as fallback
       try {
         const userInfo = await new Promise((resolve, reject) => {
-          setTimeout(() => reject(new Error('Timeout')), 5000);
+          setTimeout(() => reject(new Error('Timeout')), 3000);
           
           api.getUserInfo(userId, (err, data) => {
             if (err) return reject(err);
@@ -341,11 +351,11 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
       
       // Fallback with better naming
       const shortId = userId.slice(-6);
-      return `User_${shortId}`;
+      return `FB_User_${shortId}`;
     } catch (error) {
       console.log(`[BANK] Error getting user name for ${userId}: ${error.message}`);
       const shortId = userId.slice(-6);
-      return `User_${shortId}`;
+      return `FB_User_${shortId}`;
     }
   }
 }

@@ -1,4 +1,3 @@
-
 "use strict";
 
 const utils = require("../utils");
@@ -41,7 +40,7 @@ module.exports = function (defaultFuncs, api, ctx) {
 		resetTime: Date.now() + 3600000, // Reset hourly
 		consecutiveErrors: 0
 	};
-	
+
 	const CONFIG = {
 		MIN_DELAY: 2000, // 2 seconds minimum between requests
 		CACHE_DURATION: 300000, // 5 minutes cache
@@ -163,7 +162,7 @@ module.exports = function (defaultFuncs, api, ctx) {
 				// Enhanced rate limiting with exponential backoff
 				const timeSinceLastRequest = now - rateLimitState.lastRequestTime;
 				const requiredDelay = CONFIG.MIN_DELAY * Math.pow(CONFIG.EXPONENTIAL_BACKOFF_BASE, rateLimitState.consecutiveErrors);
-				
+
 				if (timeSinceLastRequest < requiredDelay) {
 					const waitTime = requiredDelay - timeSinceLastRequest;
 					await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -187,13 +186,13 @@ module.exports = function (defaultFuncs, api, ctx) {
 						rateLimitState.consecutiveErrors++;
 						rateLimitState.isBlocked = true;
 						rateLimitState.blockUntil = Date.now() + CONFIG.BLOCK_DURATION;
-						
+
 						if (retryCount < CONFIG.MAX_RETRIES) {
 							const delay = CONFIG.RETRY_DELAYS[retryCount] || CONFIG.RETRY_DELAYS[CONFIG.RETRY_DELAYS.length - 1];
 							await new Promise(resolve => setTimeout(resolve, delay));
 							return await makeRequestWithRetry(retryCount + 1);
 						}
-						
+
 						// Return fallback data after max retries
 						const fallbackData = {};
 						batchedIds.forEach(userId => {
@@ -211,10 +210,10 @@ module.exports = function (defaultFuncs, api, ctx) {
 								alternateName: ""
 							};
 						});
-						
+
 						return callback(null, { ...cachedResults, ...fallbackData });
 					}
-					
+
 					throw response;
 				}
 
@@ -223,7 +222,7 @@ module.exports = function (defaultFuncs, api, ctx) {
 				rateLimitState.isBlocked = false;
 
 				const formattedData = formatData(response.payload.profiles);
-				
+
 				// Cache the results with extended duration on success
 				for (const userId in formattedData) {
 					const cacheKey = `user_${userId}`;
@@ -243,7 +242,7 @@ module.exports = function (defaultFuncs, api, ctx) {
 					rateLimitState.consecutiveErrors++;
 					rateLimitState.isBlocked = true;
 					rateLimitState.blockUntil = Date.now() + CONFIG.BLOCK_DURATION;
-					
+
 					const fallbackData = {};
 					batchedIds.forEach(userId => {
 						fallbackData[userId] = {
@@ -260,15 +259,15 @@ module.exports = function (defaultFuncs, api, ctx) {
 							alternateName: ""
 						};
 					});
-					
+
 					return callback(null, { ...cachedResults, ...fallbackData });
 				}
-				
+
 				// Don't log rate limit errors to reduce console spam
 				if (err.error !== 3252001) {
 					log.error("getUserInfo", err);
 				}
-				
+
 				return callback(err);
 			}
 		}
