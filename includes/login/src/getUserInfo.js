@@ -43,14 +43,14 @@ module.exports = function (defaultFuncs, api, ctx) {
 	};
 	
 	const CONFIG = {
-		MIN_DELAY: 5000, // 5 seconds minimum between requests
-		CACHE_DURATION: 600000, // 10 minutes cache
-		MAX_RETRIES: 1, // Reduced retries to prevent spam
-		RETRY_DELAYS: [12000], // Single longer retry delay
-		BATCH_SIZE: 5, // Smaller batch size
-		MAX_REQUESTS_PER_HOUR: 500, // Reduced hourly limit
-		BLOCK_DURATION: 120000, // 2 minutes block after rate limit
-		EXPONENTIAL_BACKOFF_BASE: 2
+		MIN_DELAY: 2000, // 2 seconds minimum between requests
+		CACHE_DURATION: 300000, // 5 minutes cache
+		MAX_RETRIES: 0, // No retries to prevent spam
+		RETRY_DELAYS: [], // No retry delays
+		BATCH_SIZE: 3, // Very small batch size
+		MAX_REQUESTS_PER_HOUR: 100, // Much lower hourly limit
+		BLOCK_DURATION: 60000, // 1 minute block after rate limit
+		EXPONENTIAL_BACKOFF_BASE: 1.5
 	};
 
 	return function getUserInfo(id, callback) {
@@ -95,9 +95,10 @@ module.exports = function (defaultFuncs, api, ctx) {
 				if (cached && (now - cached.timestamp) < CONFIG.CACHE_DURATION * 2) {
 					fallbackData[userId] = cached.data;
 				} else {
+					const shortId = userId.slice(-6);
 					fallbackData[userId] = {
-						name: `User-${userId.slice(-6)}`,
-						firstName: "Unknown",
+						name: `FB_User_${shortId}`,
+						firstName: `User_${shortId}`,
 						vanity: "",
 						thumbSrc: `https://graph.facebook.com/${userId}/picture?type=large`,
 						profileUrl: `https://facebook.com/${userId}`,

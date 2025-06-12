@@ -310,63 +310,38 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
   // Helper function to get user name
   async function getUserName(userId) {
     try {
-      // First try to get from Users database
+      // First check usersData.json
       const userData = await Users.getData(userId);
       if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim() && !userData.name.startsWith('User')) {
         return userData.name;
       }
       
-      // Try Users.getNameUser function
+      // Try to get from bot's built-in getUserInfo
       try {
-        const nameFromBot = await Users.getNameUser(userId);
-        if (nameFromBot && nameFromBot !== 'undefined' && !nameFromBot.startsWith('User-') && nameFromBot.trim()) {
-          console.log(`[BANK] Got name from Users.getNameUser for ${userId}: ${nameFromBot}`);
+        const userInfo = await new Promise((resolve, reject) => {
+          setTimeout(() => reject(new Error('Timeout')), 5000);
           
-          // Update user data with the fetched name
-          await Users.setData(userId, { name: nameFromBot });
-          
-          return nameFromBot;
-        }
-      } catch (userError) {
-        console.log(`[BANK] Users.getNameUser error for ${userId}: ${userError.message}`);
-      }
-      
-      // Try to get from Facebook with updated token
-      try {
-        const axios = require('axios');
-        let accessToken = 'EAAD6V7os0gcBOZAQSzLOLbOTqJIyHLLhYgwvhqEoAifGzIGF6K8rHrVHO5W8BnOGCAJRlmJHZCs8pC2D1hbPnBKH6bqNn1ZBQMqBafyLHZAPq7rZCeofEXMOOWYNiC93xTuZCEpwZCKR9BVvSRVLCFXHZCwwW7bJtNh3xNlkOSCJeocvZCNLZCJIiZAy0KPrKRSYyNi4T3vX8lPjzZCNVZCRK2xQkW6rZCJZCn3Xf8d5p5s7L2Q3YZCGmUDyYZCGnMZBb6vZCr0k7BgZDZD';
-        
-        // Try to get token from global if available
-        if (global && global.account && global.account.accessToken) {
-          accessToken = global.account.accessToken;
-        }
-        
-        const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=${accessToken}`, {
-          timeout: 8000,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-          }
+          api.getUserInfo(userId, (err, data) => {
+            if (err) return reject(err);
+            resolve(data);
+          });
         });
         
-        if (response.data && response.data.name && response.data.name.trim()) {
-          const fbName = response.data.name.trim();
-          console.log(`[BANK] Successfully fetched name from Facebook for ${userId}: ${fbName}`);
+        if (userInfo && userInfo[userId] && userInfo[userId].name && userInfo[userId].name.trim()) {
+          const name = userInfo[userId].name.trim();
           
-          // Update user data with the fetched name
-          await Users.setData(userId, { name: fbName });
+          // Update user data
+          await Users.setData(userId, { name: name });
           
-          return fbName;
+          return name;
         }
-      } catch (fbError) {
-        console.log(`[BANK] Facebook API error for ${userId}: ${fbError.message}`);
+      } catch (apiError) {
+        console.log(`[BANK] Bot API error for ${userId}: ${apiError.message}`);
       }
       
-      // More readable fallback name
+      // Fallback with better naming
       const shortId = userId.slice(-6);
-      const fallbackName = `User_${shortId}`;
-      
-      console.log(`[BANK] Using fallback name for ${userId}: ${fallbackName}`);
-      return fallbackName;
+      return `User_${shortId}`;
     } catch (error) {
       console.log(`[BANK] Error getting user name for ${userId}: ${error.message}`);
       const shortId = userId.slice(-6);
