@@ -310,15 +310,37 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
   // Helper function to get user name
   async function getUserName(userId) {
     try {
+      // First try to get from Users database
       const userData = await Users.getData(userId);
       if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim() && !userData.name.startsWith('User')) {
         return userData.name;
       }
       
+      // Try Users.getNameUser function
+      try {
+        const nameFromBot = await Users.getNameUser(userId);
+        if (nameFromBot && nameFromBot !== 'undefined' && !nameFromBot.startsWith('User-') && nameFromBot.trim()) {
+          console.log(`[BANK] Got name from Users.getNameUser for ${userId}: ${nameFromBot}`);
+          
+          // Update user data with the fetched name
+          await Users.setData(userId, { name: nameFromBot });
+          
+          return nameFromBot;
+        }
+      } catch (userError) {
+        console.log(`[BANK] Users.getNameUser error for ${userId}: ${userError.message}`);
+      }
+      
       // Try to get from Facebook with updated token
       try {
         const axios = require('axios');
-        const accessToken = 'EAAD6V7os0gcBOZAQSzLOLbOTqJIyHLLhYgwvhqEoAifGzIGF6K8rHrVHO5W8BnOGCAJRlmJHZCs8pC2D1hbPnBKH6bqNn1ZBQMqBafyLHZAPq7rZCeofEXMOOWYNiC93xTuZCEpwZCKR9BVvSRVLCFXHZCwwW7bJtNh3xNlkOSCJeocvZCNLZCJIiZAy0KPrKRSYyNi4T3vX8lPjzZCNVZCRK2xQkW6rZCJZCn3Xf8d5p5s7L2Q3YZCGmUDyYZCGnMZBb6vZCr0k7BgZDZD';
+        let accessToken = 'EAAD6V7os0gcBOZAQSzLOLbOTqJIyHLLhYgwvhqEoAifGzIGF6K8rHrVHO5W8BnOGCAJRlmJHZCs8pC2D1hbPnBKH6bqNn1ZBQMqBafyLHZAPq7rZCeofEXMOOWYNiC93xTuZCEpwZCKR9BVvSRVLCFXHZCwwW7bJtNh3xNlkOSCJeocvZCNLZCJIiZAy0KPrKRSYyNi4T3vX8lPjzZCNVZCRK2xQkW6rZCJZCn3Xf8d5p5s7L2Q3YZCGmUDyYZCGnMZBb6vZCr0k7BgZDZD';
+        
+        // Try to get token from global if available
+        if (global && global.account && global.account.accessToken) {
+          accessToken = global.account.accessToken;
+        }
+        
         const response = await axios.get(`https://graph.facebook.com/${userId}?fields=name&access_token=${accessToken}`, {
           timeout: 8000,
           headers: {
@@ -328,6 +350,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         
         if (response.data && response.data.name && response.data.name.trim()) {
           const fbName = response.data.name.trim();
+          console.log(`[BANK] Successfully fetched name from Facebook for ${userId}: ${fbName}`);
           
           // Update user data with the fetched name
           await Users.setData(userId, { name: fbName });
@@ -340,7 +363,10 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
       
       // More readable fallback name
       const shortId = userId.slice(-6);
-      return `User_${shortId}`;
+      const fallbackName = `User_${shortId}`;
+      
+      console.log(`[BANK] Using fallback name for ${userId}: ${fallbackName}`);
+      return fallbackName;
     } catch (error) {
       console.log(`[BANK] Error getting user name for ${userId}: ${error.message}`);
       const shortId = userId.slice(-6);
