@@ -93,11 +93,47 @@ function generateAccountNumber(nextNum) {
   return (nextNum + Math.floor(Math.random() * 1000)).toString();
 }
 
-// Assuming you have a function to get user money from the currency system
-// Replace this with your actual function
+// Get user money from usersData.json
 async function getUserMoney(userId) {
-  // This is a placeholder, implement your logic to fetch user money
-  return 0; // Default to 0 if no money is found
+  try {
+    const usersDataPath = path.join(__dirname, 'includes/database/data/usersData.json');
+    if (await fs.pathExists(usersDataPath)) {
+      const usersData = await fs.readJson(usersDataPath);
+      return usersData[userId]?.money || 0;
+    }
+    return 0;
+  } catch (error) {
+    console.log(`[BANK-API] Error getting user money for ${userId}: ${error.message}`);
+    return 0;
+  }
+}
+
+// Update user money in usersData.json
+async function updateUserMoney(userId, newAmount) {
+  try {
+    const usersDataPath = path.join(__dirname, 'includes/database/data/usersData.json');
+    if (await fs.pathExists(usersDataPath)) {
+      const usersData = await fs.readJson(usersDataPath);
+      if (!usersData[userId]) {
+        usersData[userId] = {
+          userID: userId,
+          money: 0,
+          exp: 0,
+          createTime: { timestamp: Date.now() },
+          data: { timestamp: Date.now() },
+          lastUpdate: Date.now()
+        };
+      }
+      usersData[userId].money = newAmount;
+      usersData[userId].lastUpdate = Date.now();
+      await fs.outputJson(usersDataPath, usersData, { spaces: 2 });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.log(`[BANK-API] Error updating user money for ${userId}: ${error.message}`);
+    return false;
+  }
 }
 
 // API Routes
@@ -218,13 +254,15 @@ app.get('/bank/find', async (req, res) => {
       return res.json({ status: false, message: "User not found" });
     }
 
+    const userMoney = await getUserMoney(user.id);
+    
     res.json({
       status: true,
       message: {
         name: user.name,
         data: {
           STK: user.STK,
-          money: user.money
+          money: userMoney
         }
       }
     });
@@ -252,7 +290,10 @@ app.get('/bank/send', async (req, res) => {
       return res.json({ status: false, message: "Bank account not found" });
     }
 
-    bankData.users[senderID].money += amount;
+    const currentMoney = await getUserMoney(senderID);
+    const newAmount = currentMoney + amount;
+    
+    await updateUserMoney(senderID, newAmount);
 
     // Add transaction record
     bankData.transactions.push({
@@ -269,7 +310,7 @@ app.get('/bank/send', async (req, res) => {
       message: {
         noti: "💰 Money deposited successfully!",
         name: bankData.users[senderID].name,
-        money: bankData.users[senderID].money
+        money: newAmount
       }
     });
   } catch (error) {
@@ -302,11 +343,14 @@ app.get('/bank/get', async (req, res) => {
       return res.json({ status: false, message: "Incorrect password" });
     }
 
-    if (user.money < amount) {
+    const currentMoney = await getUserMoney(ID);
+    
+    if (currentMoney < amount) {
       return res.json({ status: false, message: "Insufficient balance" });
     }
 
-    bankData.users[ID].money -= amount;
+    const newAmount = currentMoney - amount;
+    await updateUserMoney(ID, newAmount);
 
     // Add transaction record
     bankData.transactions.push({
@@ -323,7 +367,7 @@ app.get('/bank/get', async (req, res) => {
       message: {
         noti: "💸 Money withdrawn successfully!",
         name: user.name,
-        money: bankData.users[ID].money
+        money: newAmount
       }
     });
   } catch (error) {
@@ -356,7 +400,9 @@ app.get('/bank/pay', async (req, res) => {
       return res.json({ status: false, message: "Incorrect password" });
     }
 
-    if (sender.money < amount) {
+    const senderMoney = await getUserMoney(senderID);
+    
+    if (senderMoney < amount) {
       return res.json({ status: false, message: "Insufficient balance" });
     }
 
@@ -383,10 +429,11 @@ app.get('/bank/pay', async (req, res) => {
     }
 
     const receiver = bankData.users[receiverID];
+    const receiverMoney = await getUserMoney(receiverID);
 
     // Transfer money
-    bankData.users[senderID].money -= amount;
-    bankData.users[receiverID].money += amount;
+    await updateUserMoney(senderID, senderMoney - amount);
+    await updateUserMoney(receiverID, receiverMoney + amount);
 
     // Add transaction record
     bankData.transactions.push({
@@ -418,8 +465,14 @@ app.get('/bank/top', async (req, res) => {
   try {
     const bankData = await getBankData();
 
-    const users = Object.entries(bankData.users)
-      .map(([id, user]) => ({ id, ...user }))
+    const usersWithMoney = [];
+    
+    for (const [id, user] of Object.entries(bankData.users)) {
+      const money = await getUserMoney(id);
+      usersWithMoney.push({ id, ...user, money });
+    }
+    
+    const users = usersWithMoney
       .sort((a, b) => b.money - a.money)
       .slice(0, 10);
 
