@@ -1,14 +1,14 @@
 
 module.exports.config = {
   name: "bank",
-  version: "2.0.6",
+  version: "2.0.7",
   usePrefix: true,
   hasPermssion: 0,
   credits: "Made by Tohidul",
   description: "For users: virtual bank system",
   commandCategory: "User",
   usages: "",
-  cooldowns: 5
+  cooldowns: 10
 };
 
 module.exports.run = async function ({ api, event, args, Currencies, Users }) {
@@ -25,9 +25,9 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
   }
   
   const bankConfig = config.BANK_API || {
-    BASE_URL: "http://0.0.0.0:3001/bank",
+    BASE_URL: "http://127.0.0.1:3001/bank",
     ENABLED: true,
-    FALLBACK_URL: "http://127.0.0.1:3001/bank"
+    FALLBACK_URL: "http://0.0.0.0:3001/bank"
   };
   
   if (!bankConfig.ENABLED) {
@@ -44,10 +44,10 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const response = await axios.get(url, { 
-          timeout: 10000,
+          timeout: 20000,
           headers: {
-            'User-Agent': 'TOHI-BOT-Bank-Client',
-            'X-Internal-Request': 'true'
+            'User-Agent': 'TOHI-BOT-BANK/1.0',
+            'Accept': 'application/json'
           }
         });
         return response.data;
@@ -57,38 +57,42 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         // Handle rate limiting specifically
         if (error.response?.status === 429) {
           if (attempt < retries) {
-            console.log(`[BANK] Rate limited, waiting before retry...`);
-            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            console.log(`[BANK] Rate limited, waiting 5 seconds before retry...`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
             continue;
           }
-          throw new Error('Bank service is busy. Please wait a moment and try again.');
+          throw new Error('🚫 Bank service is temporarily busy. Please wait 30 seconds and try again.');
         }
         
-        // Try fallback URL on last attempt
-        if (attempt === retries && bankConfig.FALLBACK_URL && bankConfig.FALLBACK_URL !== baseURL) {
-          try {
-            const fallbackUrl = `${bankConfig.FALLBACK_URL}${endpoint}${queryString ? '?' + queryString : ''}`;
-            const fallbackResponse = await axios.get(fallbackUrl, { 
-              timeout: 10000,
-              headers: {
-                'User-Agent': 'TOHI-BOT-Bank-Client',
-                'X-Internal-Request': 'true'
-              }
-            });
-            return fallbackResponse.data;
-          } catch (fallbackError) {
-            console.log(`[BANK] Fallback API Error: ${fallbackError.message}`);
+        // Handle connection errors
+        if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+          // Try fallback URL
+          if (bankConfig.FALLBACK_URL && bankConfig.FALLBACK_URL !== baseURL) {
+            try {
+              const fallbackUrl = `${bankConfig.FALLBACK_URL}${endpoint}${queryString ? '?' + queryString : ''}`;
+              const fallbackResponse = await axios.get(fallbackUrl, { 
+                timeout: 20000,
+                headers: {
+                  'User-Agent': 'TOHI-BOT-BANK/1.0',
+                  'Accept': 'application/json'
+                }
+              });
+              return fallbackResponse.data;
+            } catch (fallbackError) {
+              console.log(`[BANK] Fallback API Error: ${fallbackError.message}`);
+            }
           }
+          throw new Error('🏦 Bank service is starting up. Please wait a moment and try again.');
         }
         
         // If not the last attempt, wait before retrying
         if (attempt < retries) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
     }
     
-    throw new Error('Bank service is currently unavailable. Please try again later.');
+    throw new Error('🏦 Bank service is currently unavailable. Please try again later.');
   }
   
   try {

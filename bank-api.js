@@ -3,24 +3,19 @@ const fs = require('fs-extra');
 const path = require('path');
 const app = express();
 
-// Rate limiting
+// Rate limiting with more lenient limits for local use
 const rateLimit = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const RATE_LIMIT_MAX_EXTERNAL = 50; // 50 requests per minute for external
-const RATE_LIMIT_MAX_LOCAL = 500; // 500 requests per minute for local
+const RATE_LIMIT_MAX = 200; // Increased to 200 requests per minute
 
 function rateLimitMiddleware(req, res, next) {
-  const clientId = req.ip || 'unknown';
+  const clientId = req.ip || req.connection.remoteAddress || 'localhost';
   const now = Date.now();
 
-  // Check if request is from local/internal (localhost, 127.0.0.1, 0.0.0.0)
-  const isLocal = ['127.0.0.1', '::1', '0.0.0.0', '::ffff:127.0.0.1', 'localhost'].includes(clientId) || 
-                  clientId.startsWith('::ffff:127.') || 
-                  clientId.startsWith('::ffff:0.0.0.') ||
-                  req.headers['user-agent']?.includes('axios') ||
-                  req.headers.host?.includes('localhost');
-
-  const maxRequests = isLocal ? RATE_LIMIT_MAX_LOCAL : RATE_LIMIT_MAX_EXTERNAL;
+  // Skip rate limiting for localhost/internal requests
+  if (clientId === '127.0.0.1' || clientId === '0.0.0.0' || clientId === 'localhost' || clientId === '::1') {
+    return next();
+  }
 
   if (!rateLimit.has(clientId)) {
     rateLimit.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
@@ -34,10 +29,11 @@ function rateLimitMiddleware(req, res, next) {
     return next();
   }
 
-  if (clientData.count >= maxRequests) {
+  if (clientData.count >= RATE_LIMIT_MAX) {
+    console.log(`[BANK-API] Rate limit exceeded for ${clientId}: ${clientData.count}/${RATE_LIMIT_MAX}`);
     return res.status(429).json({ 
       status: false, 
-      message: `Rate limit exceeded. Please try again later. (${clientData.count}/${maxRequests})` 
+      message: `Rate limit exceeded. ${clientData.count}/${RATE_LIMIT_MAX} requests in window. Try again in ${Math.ceil((clientData.resetTime - now) / 1000)} seconds.` 
     });
   }
 
