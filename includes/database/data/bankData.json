@@ -7,6 +7,13 @@
       "createTime": "2025-06-12T10:55:04.816Z"
     }
   },
-  "transactions": [],
+  "transactions": [
+    {
+      "type": "withdraw",
+      "from": "100092006324917",
+      "amount": 1000,
+      "timestamp": "2025-06-12T11:22:38.331Z"
+    }
+  ],
   "nextAccountNumber": 1000001
 }
