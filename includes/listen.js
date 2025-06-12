@@ -1,172 +1,236 @@
+
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
+const logger = require("../utils/log.js");
+
 module.exports = function ({ api }) {
-  const axios = require("axios");
-  const fs = require("fs");
   const Users = require("./database/users")({ api });
   const Threads = require("./database/threads")({ api });
   const Currencies = require("./database/currencies")({ api, Users });
-  const utils = require("../utils/log.js");
-  const { getThemeColors } = utils;
-  const { main, subcolor, secondary } = getThemeColors();
-  //////////////////////////////////////////////////////////////////////
-  //========= Push all variable from database to environment =========//
-  //////////////////////////////////////////////////////////////////////
+  
+  // Enhanced rate limiting and safety
+  const messageQueue = new Map();
+  const commandCooldowns = new Map();
+  const userLastActivity = new Map();
+  
+  // Load bot settings
+  let botSettings = {};
+  try {
+    botSettings = require("../config/botSettings.json");
+  } catch (e) {
+    botSettings = {
+      SAFETY_MODE: true,
+      RATE_LIMITING: { ENABLED: true, MIN_MESSAGE_INTERVAL: 5000 },
+      ERROR_HANDLING: { SILENT_FAILURES: true }
+    };
+  }
 
-  (async function () {
+  // Initialize database data silently
+  (async function initializeData() {
     try {
       const [threads, users] = await Promise.all([
-        Threads.getAll(),
-        Users.getAll(["userID", "name", "data"]),
+        Threads.getAll().catch(() => []),
+        Users.getAll(["userID", "name", "data"]).catch(() => [])
       ]);
+      
+      // Process threads data
       threads.forEach((data) => {
         const idThread = String(data.threadID);
         global.data.allThreadID.push(idThread);
         global.data.threadData.set(idThread, data.data || {});
         global.data.threadInfo.set(idThread, data.threadInfo || {});
-        if (data.data && data.data.banned) {
+        
+        if (data.data?.banned) {
           global.data.threadBanned.set(idThread, {
             reason: data.data.reason || "",
-            dateAdded: data.data.dateAdded || "",
+            dateAdded: data.data.dateAdded || ""
           });
         }
-        if (
-          data.data &&
-          data.data.commandBanned &&
-          data.data.commandBanned.length !== 0
-        ) {
+        
+        if (data.data?.commandBanned?.length) {
           global.data.commandBanned.set(idThread, data.data.commandBanned);
         }
-        if (data.data && data.data.NSFW) {
+        
+        if (data.data?.NSFW) {
           global.data.threadAllowNSFW.push(idThread);
         }
       });
+      
+      // Process users data
       users.forEach((dataU) => {
         const idUsers = String(dataU.userID);
         global.data.allUserID.push(idUsers);
-        if (dataU.name && dataU.name.length !== 0) {
+        
+        if (dataU.name?.length) {
           global.data.userName.set(idUsers, dataU.name);
         }
-        if (dataU.data && dataU.data.banned) {
+        
+        if (dataU.data?.banned) {
           global.data.userBanned.set(idUsers, {
             reason: dataU.data.reason || "",
-            dateAdded: dataU.data.dateAdded || "",
+            dateAdded: dataU.data.dateAdded || ""
           });
         }
-        if (
-          dataU.data &&
-          dataU.data.commandBanned &&
-          dataU.data.commandBanned.length !== 0
-        ) {
+        
+        if (dataU.data?.commandBanned?.length) {
           global.data.commandBanned.set(idUsers, dataU.data.commandBanned);
         }
       });
+      
       if (global.config.autoCreateDB) {
-        global.loading.log(
-          `Successfully loaded ${secondary(`${global.data.allThreadID.length}`)} threads and ${secondary(`${global.data.allUserID.length}`)} users`,
-          "LOADED",
-        );
+        logger.log(`Database loaded: ${global.data.allThreadID.length} threads, ${global.data.allUserID.length} users`, "DATABASE");
       }
     } catch (error) {
-      global.loading.log(
-        `Can't load environment variable, error: ${error}`,
-        "error",
-      );
+      logger.log(`Database initialization error (ignored): ${error.message}`, "DEBUG");
     }
   })();
 
-  // Bot info logged once during startup - removed redundant logging
-
-  // Handle ready state silently
-  api.setOptions({
-    listenEvents: true,
-    logLevel: "silent",
-    selfListen: false
-  });
-
-  // Version check and ASCII art logging moved to main.js to prevent duplication
-  ///////////////////////////////////////////////
-  //========= Require all handle need =========//
-  //////////////////////////////////////////////
+  // Enhanced handler objects
   const runObj = {
     api,
     Users,
     Threads,
     Currencies,
+    logger,
+    botSettings
   };
 
-  const handleCommand = require("./handle/handleCommand")(runObj);
-  const handleCommandEvent = require("./handle/handleCommandEvent")(runObj);
-  const handleReply = require("./handle/handleReply")(runObj);
-  const handleReaction = require("./handle/handleReaction")(runObj);
-  const handleEvent = require("./handle/handleEvent")(runObj);
-  const handleRefresh = require("./handle/handleRefresh")(runObj);
-  const handleCreateDatabase = require("./handle/handleCreateDatabase")(runObj);
+  // Load all handlers with error protection
+  const handlers = {};
+  try {
+    handlers.handleCommand = require("./handle/handleCommand")(runObj);
+    handlers.handleCommandEvent = require("./handle/handleCommandEvent")(runObj);
+    handlers.handleReply = require("./handle/handleReply")(runObj);
+    handlers.handleReaction = require("./handle/handleReaction")(runObj);
+    handlers.handleEvent = require("./handle/handleEvent")(runObj);
+    handlers.handleRefresh = require("./handle/handleRefresh")(runObj);
+    handlers.handleCreateDatabase = require("./handle/handleCreateDatabase")(runObj);
+  } catch (error) {
+    logger.log(`Handler loading error: ${error.message}`, "ERROR");
+  }
 
-  // Removed redundant file reading that was causing duplicate logs
-  //////////////////////////////////////////////////
-  //========= Send event to handle need =========//
-  /////////////////////////////////////////////////
-
-  return (event) => {
-    const listenObj = {
-      event,
-    };
-
-    // Simplified approval system
-    const isAdmin = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
+  // Enhanced approval system
+  function checkApproval(event) {
+    if (!event.isGroup) return true;
+    
     const threadID = String(event.threadID);
-
-    // Load config once per event
+    const isAdmin = global.config.ADMINBOT?.includes(event.senderID);
+    
+    // Load config safely
     let config = {};
     try {
-      const configPath = require('path').join(__dirname, '../config.json');
-      config = require(configPath);
-    } catch (error) {
-      // Use default config if file not found
-      config = {
-        AUTO_APPROVE: { enabled: true, approvedGroups: [] },
-        APPROVAL: { approvedGroups: [], pendingGroups: [], rejectedGroups: [] }
-      };
+      delete require.cache[require.resolve("../config.json")];
+      config = require("../config.json");
+    } catch (e) {
+      config = { APPROVAL: { approvedGroups: [], rejectedGroups: [] } };
     }
+    
+    const isApproved = config.APPROVAL?.approvedGroups?.includes(threadID);
+    const isRejected = config.APPROVAL?.rejectedGroups?.includes(threadID);
+    
+    // Allow if admin, approved, or not explicitly rejected
+    return isAdmin || isApproved || !isRejected;
+  }
 
-    // Simplified approval system
-    if (event.isGroup && event.type === "message") {
-      const isAdmin = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
-      const isRejected = config.APPROVAL?.rejectedGroups?.includes(threadID) || false;
+  // Rate limiting function
+  function checkRateLimit(userID, commandName = null) {
+    if (!botSettings.RATE_LIMITING?.ENABLED) return true;
+    
+    const now = Date.now();
+    const lastActivity = userLastActivity.get(userID) || 0;
+    const minInterval = botSettings.RATE_LIMITING.MIN_MESSAGE_INTERVAL || 5000;
+    
+    if (now - lastActivity < minInterval) {
+      return false;
+    }
+    
+    userLastActivity.set(userID, now);
+    return true;
+  }
 
-      // Only block if explicitly rejected and not admin
-      if (isRejected && !isAdmin) {
-        return; // Block rejected groups
+  // Enhanced error handler
+  function handleError(error, context = "Unknown") {
+    if (!error) return;
+    
+    const errorStr = error.toString().toLowerCase();
+    
+    // Ignore common errors
+    const ignorableErrors = [
+      'rate limit',
+      'enoent',
+      'network',
+      'timeout',
+      'connection reset',
+      'does not exist in database',
+      'you can\'t use this feature',
+      'took too long to execute'
+    ];
+    
+    if (ignorableErrors.some(err => errorStr.includes(err))) {
+      return; // Silently ignore
+    }
+    
+    logger.log(`${context} error: ${error.message}`, "DEBUG");
+  }
+
+  // Main event handler
+  return async (event) => {
+    try {
+      if (!event || !event.type) return;
+      
+      // Skip ready events
+      if (event.type === 'ready') return;
+      
+      // Check approval for group messages
+      if (event.isGroup && !checkApproval(event)) {
+        return;
       }
-
-      // Allow all other groups
-    }
-
-    switch (event.type) {
-      case "message":
-      case "message_reply":
-      case "message_unsend":
-        handleCreateDatabase(listenObj);
-        handleCommand(listenObj);
-        handleReply(listenObj);
-        handleCommandEvent(listenObj);
-        break;
-      case "change_thread_image":
-        break;
-      case "event":
-        handleEvent(listenObj);
-        handleRefresh(listenObj);
-        break;
-      case "message_reaction":
-        handleReaction(listenObj);
-        break;
-      default:
-        break;
+      
+      // Rate limiting
+      if (!checkRateLimit(event.senderID)) {
+        return;
+      }
+      
+      const listenObj = { event };
+      
+      // Handle different event types with enhanced error protection
+      switch (event.type) {
+        case "message":
+        case "message_reply":
+        case "message_unsend":
+          await Promise.allSettled([
+            handlers.handleCreateDatabase?.(listenObj),
+            handlers.handleCommand?.(listenObj),
+            handlers.handleReply?.(listenObj),
+            handlers.handleCommandEvent?.(listenObj)
+          ]);
+          break;
+          
+        case "event":
+          await Promise.allSettled([
+            handlers.handleEvent?.(listenObj),
+            handlers.handleRefresh?.(listenObj)
+          ]);
+          break;
+          
+        case "message_reaction":
+          if (handlers.handleReaction) {
+            await handlers.handleReaction(listenObj).catch(handleError);
+          }
+          break;
+          
+        case "change_thread_image":
+          // Handle silently
+          break;
+          
+        default:
+          // Unknown event type - ignore
+          break;
+      }
+      
+    } catch (error) {
+      handleError(error, "EventHandler");
     }
   };
 };
-
-/** 
-THIZ BOT WAS MADE BY ME(CATALIZCS) AND MY BROTHER SPERMLORD - DO NOT STEAL MY CODE (つ ͡ ° ͜ʖ ͡° )つ ✄ ╰⋃╯
-THIZ FILE WAS MODIFIED BY ME(@YanMaglinte) - DO NOT STEAL MY CREDITS (つ ͡ ° ͜ʖ ͡° )つ ✄ ╰⋃╯
-THIZ FILE WAS MODIFIED BY ANOTHER PERSON(@lianecagara) - box MIT 🫨
-**/

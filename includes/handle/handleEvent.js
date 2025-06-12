@@ -1,38 +1,51 @@
-module.exports = function ({api ,models, Users, Threads, Currencies, ...rest }) {
-    const logger = require("../../utils/log.js");
-   	const moment = require("moment");
-    return function ({ event, ...rest2 }) {
-        const timeStart = Date.now()
-        const time = moment.tz("Asia/Manila").format("HH:MM:ss L");
-        const { userBanned, threadBanned } = global.data;
-        const { events } = global.client;
-        const { allowInbox, DeveloperMode } = global.config;
-        var { senderID, threadID } = event;
-        senderID = String(senderID);
-        threadID = String(threadID);
-        if (userBanned.has(senderID)|| threadBanned.has(threadID) || allowInbox == ![] && senderID == threadID) return;
-        for (const [key, value] of events.entries()) {
-            if (value.config.eventType.indexOf(event.logMessageType) !== -1) {
-                const eventRun = events.get(key);
-                try {
-                    const Obj = {
-                        ...rest,
-                        ...rest2
-                    };
-                    Obj.api = api
-                    Obj.event = event
-                    Obj.models= models 
-                    Obj.Users= Users 
-                    Obj.Threads = Threads
-                    Obj.Currencies = Currencies 
-                    eventRun.run(Obj);
-                    if (DeveloperMode == !![]) 
-                    	logger.log(global.getText('handleEvent', 'executeEvent', time, eventRun.config.name, threadID, Date.now() - timeStart), 'Event');
-                } catch (error) {
-                    logger.log(global.getText('handleEvent', 'eventError', eventRun.config.name, JSON.stringify(error)), "error");
-                }
-            }
+
+module.exports = function ({ api, Users, Threads, Currencies, logger }) {
+  return async function handleEvent({ event }) {
+    try {
+      if (!event || event.type !== "event") return;
+      
+      const { events } = global.client;
+      if (!events || events.size === 0) return;
+      
+      const { threadID, senderID, logMessageType } = event;
+      
+      // Process each event handler
+      for (const [eventName, eventHandler] of events) {
+        try {
+          if (!eventHandler.run) continue;
+          
+          const { config } = eventHandler;
+          
+          // Check if event type matches
+          if (config.eventType && !config.eventType.includes(logMessageType)) {
+            continue;
+          }
+          
+          // Create run object
+          const runObj = {
+            api,
+            event,
+            Users,
+            Threads,
+            Currencies,
+            logger
+          };
+          
+          // Execute event handler with timeout
+          await Promise.race([
+            eventHandler.run(runObj),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Event timeout')), 45000)
+            )
+          ]);
+          
+        } catch (error) {
+          logger.log(`Event handler error for ${eventName}: ${error.message}`, "DEBUG");
         }
-        return;
-    };
-}
+      }
+      
+    } catch (error) {
+      logger.log(`HandleEvent error: ${error.message}`, "DEBUG");
+    }
+  };
+};

@@ -1,57 +1,56 @@
-module.exports = function ({ Users, Threads }) {
-    const logger =require("../../utils/log.js");
-    const threads = require('../database/data/threadsData.json')
-    const users = require('../database/data/usersData.json')
-    return async function ({ event }) {
-        const { allUserID, allThreadID } = global.data; 
-        const { autoCreateDB } = global.config;
-        if (autoCreateDB == ![]) return;
-        var { senderID, threadID } = event;
-        senderID = String(senderID);
-        var threadID = String(threadID);
+
+module.exports = function ({ api, Users, Threads, Currencies, logger }) {
+  return async function handleCreateDatabase({ event }) {
+    try {
+      if (!event || !global.config.autoCreateDB) return;
+      
+      const { threadID, senderID, isGroup } = event;
+      
+      // Create thread data if needed
+      if (isGroup && threadID && !global.data.allThreadID.includes(threadID)) {
         try {
-            // Always ensure user data exists first
-            if (!allUserID.includes(senderID) && !users.hasOwnProperty(senderID)) {
-                allUserID.push(senderID);
-                try {
-                    await Users.createData(senderID);
-                    logger.log(global.getText('handleCreateDatabase', 'newUser', senderID), 'DATABASE');
-                } catch (error) {
-                    logger.log(`Error creating user ${senderID}: ${error.message}`, 'ERROR');
-                }
-            }
-            
-            // Create thread data if needed
-            if (!allThreadID.includes(threadID) && event.isGroup == !![] && !threads.hasOwnProperty(threadID)) {
-                allThreadID.push(threadID)
-                await Threads.createData(threadID);
-                logger.log(global.getText('handleCreateDatabase', 'newThread', threadID), 'DATABASE');
-            }
-            
-            // Update participant data
-            if(threads.hasOwnProperty(threadID)) {
-                var data = threads[threadID]
-                if(data) {
-                    if(!data.threadInfo.participantIDs.includes(senderID)) {
-                        data.threadInfo.participantIDs.push(senderID)
-                        logger.log('Perform more group data ' + threadID, 'ADD DATA')
-                        await Threads.setData(threadID, {threadInfo: data.threadInfo})
-                    }
-                }
-            }
-            
-            // Force create user data if still missing
-            if (!users.hasOwnProperty(senderID)) {
-                try {
-                    await Users.createData(senderID);
-                    logger.log(global.getText('handleCreateDatabase', 'newUser', senderID), 'DATABASE');
-                } catch (error) {
-                    logger.log(`Failed to create user data for ${senderID}: ${error.message}`, 'ERROR');
-                }
-            }
-            return;
-        } catch (err) {
-            return console.log(err);
+          await Threads.createData(threadID);
+          global.data.allThreadID.push(threadID);
+          global.data.threadData.set(threadID, {});
+          
+          // Get thread info
+          const threadInfo = await api.getThreadInfo(threadID);
+          if (threadInfo) {
+            global.data.threadInfo.set(threadID, threadInfo);
+          }
+        } catch (error) {
+          logger.log(`Thread creation error for ${threadID}: ${error.message}`, "DEBUG");
         }
-    };
-}
+      }
+      
+      // Create user data if needed
+      if (senderID && !global.data.allUserID.includes(senderID)) {
+        try {
+          await Users.createData(senderID);
+          global.data.allUserID.push(senderID);
+          
+          // Get user info
+          const userInfo = await api.getUserInfo(senderID);
+          if (userInfo && userInfo[senderID]) {
+            global.data.userName.set(senderID, userInfo[senderID].name);
+          }
+        } catch (error) {
+          logger.log(`User creation error for ${senderID}: ${error.message}`, "DEBUG");
+        }
+      }
+      
+      // Create currency data if needed
+      if (senderID && !global.data.allCurrenciesID.includes(senderID)) {
+        try {
+          await Currencies.createData(senderID);
+          global.data.allCurrenciesID.push(senderID);
+        } catch (error) {
+          logger.log(`Currency creation error for ${senderID}: ${error.message}`, "DEBUG");
+        }
+      }
+      
+    } catch (error) {
+      logger.log(`HandleCreateDatabase error: ${error.message}`, "DEBUG");
+    }
+  };
+};

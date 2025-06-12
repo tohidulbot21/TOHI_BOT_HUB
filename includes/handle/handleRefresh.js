@@ -1,66 +1,49 @@
-/**
- * @author D-Jukie
- * @warn Do not edit code or edit credits
- * @src Disme Project
- * @bug fixed by @YanMaglinte
- */
-module.exports = function ({ api, Threads }) {
-    const logger = require("../../utils/log.js");
-    return async function ({ event }) {
-        const { threadID, logMessageType, logMessageData } = event;
-        const { setData, getData, delData } = Threads;
+module.exports = function ({ api, Users, Threads, Currencies, logger }) {
+  return async function handleRefresh({ event }) {
+    try {
+      if (!event || event.type !== "event") return;
+
+      const { threadID, logMessageData } = event;
+
+      // Handle thread info refresh for join/leave events
+      if (event.logMessageType === "log:subscribe" || event.logMessageType === "log:unsubscribe") {
         try {
-            let dataThread = (await getData(threadID)).threadInfo;
-            switch (logMessageType) {
-                case "log:thread-admins": {
-                    if (logMessageData.ADMIN_EVENT == "add_admin") {
-                        dataThread.adminIDs.push({
-                            id: logMessageData.TARGET_ID
-                        })
-                    } else if (logMessageData.ADMIN_EVENT == "remove_admin") {
-                        dataThread.adminIDs = dataThread.adminIDs.filter(item => item.id != logMessageData.TARGET_ID);
-                    }
-                    logger.log('Refresh the list of admins in the group ' + threadID, 'UPDATE DATA')
-                    await setData(threadID, { threadInfo: dataThread });
-                    break;
-                }
-                case "log:thread-name": {
-                    logger.log('Update name in group ' + threadID, 'UPDATE DATA')
-                    dataThread.threadName = event.logMessageData.name
-                    await setData(threadID, { threadInfo: dataThread });
-                    break;
-                }
-                case "log:subscribe": {
-                    if (event.logMessageData.addedParticipants.some(i => i.userFbId == api.getCurrentUserID())) return
-                    for(let i of event.logMessageData.addedParticipants) {
-                        dataThread.participantIDs.push(i.userFbId)
-                    }
-                    var data = await Threads.setData(event.threadID, {threadInfo: dataThread})
-                    logger.log('Perform more group data ' + threadID, 'ADD DATA')
-                    break;
-                }
-                case 'log:unsubscribe': {
-                    if (logMessageData.leftParticipantFbId == api.getCurrentUserID()) {
-                        logger.log('Perform group data deletion ' + threadID, 'DELETE DATA')
-                        const index = global.data.allThreadID.findIndex(item => item == threadID);
-                        global.data.allThreadID.splice(index, 1);
-                        await delData(threadID);
-                        return
-                    } else {
-                        const index = dataThread.participantIDs.findIndex(item => item == logMessageData.leftParticipantFbId);
-                        dataThread.participantIDs.splice(index, 1);
-                        if (dataThread.adminIDs.find(i => i.id == logMessageData.leftParticipantFbId)) {
-                            dataThread.adminIDs = dataThread.adminIDs.filter(item => item.id != logMessageData.leftParticipantFbId);
-                        }
-                        logger.log('Perform user deletion ' + logMessageData.leftParticipantFbId, 'DELETE DATA')
-                        await setData(threadID, { threadInfo: dataThread });
-                    }
-                    break;
-                }
+          // Get fresh thread info
+          const threadInfo = await api.getThreadInfo(threadID);
+          if (threadInfo) {
+            global.data.threadInfo.set(threadID, threadInfo);
+
+            // Update thread data if not exists
+            if (!global.data.threadData.has(threadID)) {
+              global.data.threadData.set(threadID, {});
+              global.data.allThreadID.push(threadID);
             }
-        } catch (e) {
-            console.log('There was an error updating data: ' + e)
+          }
+        } catch (error) {
+          logger.log(`Thread refresh error for ${threadID}: ${error.message}`, "DEBUG");
         }
-        return;
-    };
-}
+      }
+
+      // Handle user info refresh
+      if (logMessageData && logMessageData.addedParticipants) {
+        for (const participant of logMessageData.addedParticipants) {
+          try {
+            const userID = participant.userFbId;
+            if (userID && !global.data.userName.has(userID)) {
+              const userInfo = await api.getUserInfo(userID);
+              if (userInfo && userInfo[userID]) {
+                global.data.userName.set(userID, userInfo[userID].name);
+                global.data.allUserID.push(userID);
+              }
+            }
+          } catch (error) {
+            logger.log(`User refresh error: ${error.message}`, "DEBUG");
+          }
+        }
+      }
+
+    } catch (error) {
+      logger.log(`HandleRefresh error: ${error.message}`, "DEBUG");
+    }
+  };
+};
