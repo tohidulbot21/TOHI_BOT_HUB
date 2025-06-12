@@ -1,4 +1,3 @@
-
 const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
@@ -12,26 +11,26 @@ const RATE_LIMIT_MAX = 50; // 50 requests per minute
 function rateLimitMiddleware(req, res, next) {
   const clientId = req.ip || 'unknown';
   const now = Date.now();
-  
+
   if (!rateLimit.has(clientId)) {
     rateLimit.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
     return next();
   }
-  
+
   const clientData = rateLimit.get(clientId);
-  
+
   if (now > clientData.resetTime) {
     rateLimit.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
     return next();
   }
-  
+
   if (clientData.count >= RATE_LIMIT_MAX) {
     return res.status(429).json({ 
       status: false, 
       message: "Rate limit exceeded. Please try again later." 
     });
   }
-  
+
   clientData.count++;
   next();
 }
@@ -94,6 +93,13 @@ function generateAccountNumber(nextNum) {
   return (nextNum + Math.floor(Math.random() * 1000)).toString();
 }
 
+// Assuming you have a function to get user money from the currency system
+// Replace this with your actual function
+async function getUserMoney(userId) {
+  // This is a placeholder, implement your logic to fetch user money
+  return 0; // Default to 0 if no money is found
+}
+
 // API Routes
 
 // Root route
@@ -130,7 +136,7 @@ app.get('/bank/check', async (req, res) => {
 
     const bankData = await getBankData();
     const userExists = bankData.users[ID] ? true : false;
-    
+
     res.json({ 
       status: userExists,
       message: userExists ? "User has bank account" : "User doesn't have bank account"
@@ -149,41 +155,39 @@ app.get('/bank/register', async (req, res) => {
     }
 
     const bankData = await getBankData();
-    
-    // Check if user already has account
+
     if (bankData.users[senderID]) {
-      return res.json({ status: false, message: "You already have a bank account!" });
+      return res.json({ status: false, message: "You already have a bank account" });
     }
 
-    // Create new account
-    const password = generatePassword();
     const accountNumber = generateAccountNumber(bankData.nextAccountNumber);
-    const decodedName = decodeURI(name);
-    
+    const password = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    // Get current money from currencies system
+    const currentMoney = await getUserMoney(senderID);
+
     bankData.users[senderID] = {
-      name: decodedName,
+      name: decodeURI(name),
       STK: accountNumber,
-      money: 0,
       password: password,
-      createdAt: new Date().toISOString()
+      createTime: new Date().toISOString()
     };
-    
-    bankData.nextAccountNumber++;
-    
+
+    bankData.nextAccountNumber += 1;
     await saveBankData(bankData);
-    
+
     res.json({
       status: true,
       message: {
-        noti: "🎉 Bank account created successfully!",
-        name: decodedName,
+        noti: "🏦 Bank account created successfully!",
+        name: decodeURI(name),
         STK: accountNumber,
-        money: 0,
+        money: currentMoney,
         password: password
       }
     });
   } catch (error) {
-    res.json({ status: false, message: "Failed to create account" });
+    res.json({ status: false, message: "Registration failed" });
   }
 });
 
@@ -192,9 +196,9 @@ app.get('/bank/find', async (req, res) => {
   try {
     const { type, STK, ID } = req.query;
     const bankData = await getBankData();
-    
+
     let user = null;
-    
+
     if (type === 'STK' && STK) {
       // Find by account number
       for (const [userId, userData] of Object.entries(bankData.users)) {
@@ -209,11 +213,11 @@ app.get('/bank/find', async (req, res) => {
         user = { id: ID, ...bankData.users[ID] };
       }
     }
-    
+
     if (!user) {
       return res.json({ status: false, message: "User not found" });
     }
-    
+
     res.json({
       status: true,
       message: {
@@ -236,20 +240,20 @@ app.get('/bank/send', async (req, res) => {
     if (!senderID || !money) {
       return res.json({ status: false, message: "Missing parameters" });
     }
-    
+
     const amount = parseInt(money);
     if (isNaN(amount) || amount <= 0) {
       return res.json({ status: false, message: "Invalid amount" });
     }
-    
+
     const bankData = await getBankData();
-    
+
     if (!bankData.users[senderID]) {
       return res.json({ status: false, message: "Bank account not found" });
     }
-    
+
     bankData.users[senderID].money += amount;
-    
+
     // Add transaction record
     bankData.transactions.push({
       type: 'deposit',
@@ -257,9 +261,9 @@ app.get('/bank/send', async (req, res) => {
       amount: amount,
       timestamp: new Date().toISOString()
     });
-    
+
     await saveBankData(bankData);
-    
+
     res.json({
       status: true,
       message: {
@@ -280,30 +284,30 @@ app.get('/bank/get', async (req, res) => {
     if (!ID || !money || !password) {
       return res.json({ status: false, message: "Missing parameters" });
     }
-    
+
     const amount = parseInt(money);
     if (isNaN(amount) || amount <= 0) {
       return res.json({ status: false, message: "Invalid amount" });
     }
-    
+
     const bankData = await getBankData();
-    
+
     if (!bankData.users[ID]) {
       return res.json({ status: false, message: "Bank account not found" });
     }
-    
+
     const user = bankData.users[ID];
-    
+
     if (user.password !== password) {
       return res.json({ status: false, message: "Incorrect password" });
     }
-    
+
     if (user.money < amount) {
       return res.json({ status: false, message: "Insufficient balance" });
     }
-    
+
     bankData.users[ID].money -= amount;
-    
+
     // Add transaction record
     bankData.transactions.push({
       type: 'withdraw',
@@ -311,9 +315,9 @@ app.get('/bank/get', async (req, res) => {
       amount: amount,
       timestamp: new Date().toISOString()
     });
-    
+
     await saveBankData(bankData);
-    
+
     res.json({
       status: true,
       message: {
@@ -334,30 +338,30 @@ app.get('/bank/pay', async (req, res) => {
     if (!senderID || !money || !password) {
       return res.json({ status: false, message: "Missing parameters" });
     }
-    
+
     const amount = parseInt(money);
     if (isNaN(amount) || amount <= 0) {
       return res.json({ status: false, message: "Invalid amount" });
     }
-    
+
     const bankData = await getBankData();
-    
+
     if (!bankData.users[senderID]) {
       return res.json({ status: false, message: "Your bank account not found" });
     }
-    
+
     const sender = bankData.users[senderID];
-    
+
     if (sender.password !== password) {
       return res.json({ status: false, message: "Incorrect password" });
     }
-    
+
     if (sender.money < amount) {
       return res.json({ status: false, message: "Insufficient balance" });
     }
-    
+
     let receiverID = null;
-    
+
     if (type === 'STK' && STK) {
       // Find receiver by account number
       for (const [userId, userData] of Object.entries(bankData.users)) {
@@ -369,21 +373,21 @@ app.get('/bank/pay', async (req, res) => {
     } else if (type === 'ID' && userID) {
       receiverID = userID;
     }
-    
+
     if (!receiverID || !bankData.users[receiverID]) {
       return res.json({ status: false, message: "Receiver account not found" });
     }
-    
+
     if (receiverID === senderID) {
       return res.json({ status: false, message: "Cannot transfer to yourself" });
     }
-    
+
     const receiver = bankData.users[receiverID];
-    
+
     // Transfer money
     bankData.users[senderID].money -= amount;
     bankData.users[receiverID].money += amount;
-    
+
     // Add transaction record
     bankData.transactions.push({
       type: 'transfer',
@@ -392,9 +396,9 @@ app.get('/bank/pay', async (req, res) => {
       amount: amount,
       timestamp: new Date().toISOString()
     });
-    
+
     await saveBankData(bankData);
-    
+
     res.json({
       status: true,
       message: {
@@ -413,22 +417,22 @@ app.get('/bank/pay', async (req, res) => {
 app.get('/bank/top', async (req, res) => {
   try {
     const bankData = await getBankData();
-    
+
     const users = Object.entries(bankData.users)
       .map(([id, user]) => ({ id, ...user }))
       .sort((a, b) => b.money - a.money)
       .slice(0, 10);
-    
+
     if (users.length === 0) {
       return res.json({ status: false, message: "No users found" });
     }
-    
+
     const ranking = users.map((user, index) => ({
       rank: index + 1,
       name: user.name,
       money: user.money
     }));
-    
+
     res.json({
       status: true,
       message: "🏆 Top Richest Users:",
@@ -443,19 +447,19 @@ app.get('/bank/top', async (req, res) => {
 app.get('/bank/password', async (req, res) => {
   try {
     const { bka, dka, fka } = req.query;
-    
+
     if (!dka) {
       return res.json({ status: false, message: "User ID required" });
     }
-    
+
     const bankData = await getBankData();
-    
+
     if (!bankData.users[dka]) {
       return res.json({ status: false, message: "Bank account not found" });
     }
-    
+
     const user = bankData.users[dka];
-    
+
     if (bka === 'get') {
       // Get current password
       res.json({
@@ -470,10 +474,10 @@ app.get('/bank/password', async (req, res) => {
       if (newPassword.length < 4) {
         return res.json({ status: false, message: "Password must be at least 4 characters" });
       }
-      
+
       bankData.users[dka].password = newPassword;
       await saveBankData(bankData);
-      
+
       res.json({
         status: true,
         message: {
@@ -493,16 +497,16 @@ app.get('/bank/password', async (req, res) => {
 // Initialize and start server
 async function startBankAPI() {
   await initBankData();
-  
+
   const PORT = process.env.BANK_API_PORT || 3001;
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`⫸ TBH ➤ [ BANK-API ] Bank API server running on port ${PORT}`);
   });
-  
+
   server.on('error', (error) => {
     console.log(`⫸ TBH ➤ [ BANK-API ] Server error: ${error.message}`);
   });
-  
+
   return server;
 }
 
