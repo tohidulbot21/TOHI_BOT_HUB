@@ -493,13 +493,25 @@ function levenshteinDistance(str1, str2) {
         activeCmd = true;
 
         try {
-          // Get user name with better fallback
-          let userName = `User-${senderID.slice(-6)}`;
+          // Get user name with better fallback - show full name or complete user ID
+          let userName = senderID; // Default to full user ID
           try {
             const userData = await Users.getData(senderID);
             if (userData && userData.name) {
               userName = userData.name;
               event.fbUserName = userData.name;
+            } else {
+              // Try getUserInfo as fallback to get actual name
+              try {
+                const userInfo = await api.getUserInfo(senderID);
+                if (userInfo && userInfo[senderID] && userInfo[senderID].name) {
+                  userName = userInfo[senderID].name;
+                  event.fbUserName = userInfo[senderID].name;
+                }
+              } catch (e) {
+                // If both fail, use complete user ID instead of truncated version
+                userName = `UserID-${senderID}`;
+              }
             }
           } catch (dbError) {
             // Try getUserInfo as fallback
@@ -507,9 +519,14 @@ function levenshteinDistance(str1, str2) {
               const userInfo = await api.getUserInfo(senderID);
               if (userInfo && userInfo[senderID] && userInfo[senderID].name) {
                 userName = userInfo[senderID].name;
+                event.fbUserName = userInfo[senderID].name;
+              } else {
+                // Use complete user ID if name fetch fails
+                userName = `UserID-${senderID}`;
               }
             } catch (e) {
-              // Use default name
+              // Use complete user ID as final fallback
+              userName = `UserID-${senderID}`;
             }
           }
 
