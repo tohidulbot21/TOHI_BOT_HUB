@@ -88,6 +88,43 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
       const { commands } = global.client;
       const { threadID, messageID, senderID, isGroup } = event;
 
+      // Check if group is approved before executing any commands
+      const fs = require('fs');
+      const configPath = require('path').join(__dirname, '../../config.json');
+      let config = {};
+
+      try {
+        const configData = fs.readFileSync(configPath, 'utf8');
+        config = JSON.parse(configData);
+      } catch (error) {
+        config = { APPROVAL: { approvedGroups: [] } };
+      }
+
+      // Initialize approval system if not exists
+      if (!config.APPROVAL) {
+        config.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
+      }
+
+      // For group chats, check if group is approved
+      if (event.threadID && event.threadID !== event.senderID) {
+        const isApproved = config.APPROVAL.approvedGroups.includes(String(event.threadID));
+        const isOwner = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
+
+        // If group is not approved and sender is not owner, block all commands
+        if (!isApproved && !isOwner) {
+          // Only allow approve command for owner
+          const messageBody = event.body || "";
+          const prefix = global.config.PREFIX || "/";
+
+          if (messageBody.startsWith(prefix + "approve") && isOwner) {
+            // Allow approve command to pass through
+          } else {
+            // Block all other commands
+            return;
+          }
+        }
+      }
+
       // Get thread settings
       const threadData = global.data.threadData.get(threadID) || {};
       const prefix = threadData.PREFIX || global.config.PREFIX || "/";

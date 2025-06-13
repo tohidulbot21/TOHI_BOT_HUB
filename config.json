@@ -25,6 +25,15 @@
   "ADMINBOT": [
     "100092006324917"
   ],
+  "AUTO_APPROVE": {
+    "enabled": false,
+    "note": "Set to true for auto-approval, false for manual approval"
+  },
+  "APPROVAL": {
+    "approvedGroups": [],
+    "pendingGroups": [],
+    "rejectedGroups": []
+  },
   "DESIGN": {
     "Title": "TOHI-BOT-HUB",
     "Theme": "matrix",

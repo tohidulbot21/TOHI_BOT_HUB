@@ -56,32 +56,38 @@ module.exports.run = async function({ api, event, Users, Threads }) {
 
         api.sendMessage(
           `✅ Group "${groupName}" has been automatically approved!\n\n` +
-          `📝 Type /help to see available commands.\n` +
+          `📝 Type ${global.config.PREFIX || '/'}help to see available commands.\n` +
           `👑 Bot Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}`,
           threadID
         );
       }
     } else {
-      // Manual approval required
+      // Manual approval required - Default behavior
       if (!config.APPROVAL.pendingGroups.includes(threadID) && 
-          !config.APPROVAL.approvedGroups.includes(threadID)) {
+          !config.APPROVAL.approvedGroups.includes(threadID) &&
+          !config.APPROVAL.rejectedGroups.includes(threadID)) {
+        
         config.APPROVAL.pendingGroups.push(threadID);
 
         // Save config
         await fsPromises.writeFile(configPath, JSON.stringify(config, null, 2));
 
         api.sendMessage(
-          `⏳ Group "${groupName}" is pending approval.\n\n` +
-          `Please wait for admin approval to use bot commands.`,
+          `⏳ Group "${groupName}" এ বট add হয়েছে কিন্তু এখনো approve করা হয়নি।\n\n` +
+          `🚫 Bot এর কোনো command কাজ করবে না যতক্ষণ না admin approve করে।\n` +
+          `⏰ Admin এর approval এর জন্য অপেক্ষা করুন।\n\n` +
+          `👑 Bot Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}`,
           threadID
         );
 
         // Notify admins
-        const adminMessage = `🔔 New group pending approval:\n\n` +
-          `📝 Name: ${groupName}\n` +
-          `🆔 ID: ${threadID}\n` +
-          `👥 Members: ${threadInfo.participantIDs?.length || 0}\n\n` +
-          `Use /approve ${threadID} to approve this group.`;
+        const adminMessage = `🔔 নতুন গ্রুপ approval এর জন্য অপেক্ষা করছে:\n\n` +
+          `📝 Group Name: ${groupName}\n` +
+          `🆔 Group ID: ${threadID}\n` +
+          `👥 Members: ${threadInfo.participantIDs?.length || 0}\n` +
+          `📅 Added: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n` +
+          `✅ Approve করতে: ${global.config.PREFIX || '/'}approve\n` +
+          `❌ Reject করতে: bot কে group থেকে remove করুন`;
 
         if (global.config.ADMINBOT && Array.isArray(global.config.ADMINBOT)) {
           global.config.ADMINBOT.forEach(adminID => {

@@ -119,7 +119,7 @@ module.exports.run = async function ({ api, event, args }) {
         
         // Check if already approved
         if (config.APPROVAL.approvedGroups.includes(targetID)) {
-          return api.sendMessage("✅ এই গ্রুপ ইতিমধ্যে চালু আছে!", threadID, messageID);
+          return api.sendMessage("✅ এই গ্রুপ ইতিমধ্যে approve করা আছে এবং সব command চালু আছে!", threadID, messageID);
         }
         
         // Add to approved list
@@ -128,6 +128,27 @@ module.exports.run = async function ({ api, event, args }) {
         // Remove from other lists
         config.APPROVAL.pendingGroups = config.APPROVAL.pendingGroups.filter(id => String(id) !== targetID);
         config.APPROVAL.rejectedGroups = config.APPROVAL.rejectedGroups.filter(id => String(id) !== targetID);
+        
+        // Save config
+        writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+        
+        // Get group info for success message
+        try {
+          const groupInfo = await api.getThreadInfo(targetID);
+          const groupName = groupInfo.name || "Unnamed Group";
+          
+          const successMsg = `✅ Group Successfully Approved!\n\n` +
+            `📝 Group: ${groupName}\n` +
+            `🆔 ID: ${targetID}\n` +
+            `👥 Members: ${groupInfo.participantIDs?.length || 0}\n` +
+            `📅 Approved: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n` +
+            `🎉 এখন সব command চালু আছে!\n` +
+            `📝 Help দেখতে: ${global.config.PREFIX || '/'}help`;
+          
+          return api.sendMessage(successMsg, threadID, messageID);
+        } catch (error) {
+          return api.sendMessage(`✅ গ্রুপ approve করা হয়েছে! এখন সব command চালু আছে।`, threadID, messageID);
+        } config.APPROVAL.rejectedGroups.filter(id => String(id) !== targetID);
         
         // Save config
         writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
