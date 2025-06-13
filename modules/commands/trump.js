@@ -62,7 +62,7 @@ module.exports = {
         responseType: "arraybuffer",
       })
     ).data;
-    fs.writeFileSync(pathImg, Buffer.from(getPorn, "utf-8"));
+    fs.writeFileSync(pathImg, Buffer.from(getPorn));
     let baseImage = await loadImage(pathImg);
     let canvas = createCanvas(baseImage.width, baseImage.height);
     let ctx = canvas.getContext("2d");

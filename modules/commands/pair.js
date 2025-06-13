@@ -1,5 +1,16 @@
 const axios = require("axios");
 const fs = require("fs-extra");
+
+// Helper function to get user name
+async function getUserName(api, userID) {
+  try {
+    const userInfo = await api.getUserInfo(userID);
+    return userInfo && userInfo[userID] ? userInfo[userID].name : "Unknown User";
+  } catch (error) {
+    return "Unknown User";
+  }
+}
+
 module.exports = {
   config: {
     name: "pair",
@@ -42,7 +53,14 @@ module.exports = {
     let pathAvt2 = __dirname + "/assets/avatar.png";
 
     var id1 = event.senderID;
-    var name1 = await usersData.getName(id1);
+    // Get user name with proper error handling
+    let name1;
+    try {
+      const userData = await usersData.get(id1);
+      name1 = userData?.name || await getUserName(api, id1);
+    } catch (error) {
+      name1 = await getUserName(api, id1);
+    }
     
     if (!name1) {
       return api.sendMessage(
@@ -94,7 +112,14 @@ module.exports = {
     }
     
     var id2 = ungvien[Math.floor(Math.random() * ungvien.length)];
-    var name2 = await usersData.getName(id2);
+    // Get paired user name with proper error handling
+    let name2;
+    try {
+      const userData = await usersData.get(id2);
+      name2 = userData?.name || await getUserName(api, id2);
+    } catch (error) {
+      name2 = await getUserName(api, id2);
+    }
     
     if (!name2) {
       return api.sendMessage(
@@ -129,7 +154,7 @@ module.exports = {
         { responseType: "arraybuffer" },
       )
     ).data;
-    fs.writeFileSync(pathAvt1, Buffer.from(getAvtmot, "utf-8"));
+    fs.writeFileSync(pathAvt1, Buffer.from(getAvtmot));
 
     let getAvthai = (
       await axios.get(
@@ -137,14 +162,14 @@ module.exports = {
         { responseType: "arraybuffer" },
       )
     ).data;
-    fs.writeFileSync(pathAvt2, Buffer.from(getAvthai, "utf-8"));
+    fs.writeFileSync(pathAvt2, Buffer.from(getAvthai));
 
     let getbackground = (
       await axios.get(`${background}`, {
         responseType: "arraybuffer",
       })
     ).data;
-    fs.writeFileSync(pathImg, Buffer.from(getbackground, "utf-8"));
+    fs.writeFileSync(pathImg, Buffer.from(getbackground));
 
     let baseImage = await loadImage(pathImg);
     let baseAvt1 = await loadImage(pathAvt1);

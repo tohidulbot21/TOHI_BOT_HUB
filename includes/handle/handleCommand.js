@@ -25,7 +25,11 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
       'permission denied',
       'access denied',
       'invalid session',
-      'login required'
+      'login required',
+      'cannot read properties of undefined',
+      'getname is not a function',
+      'mqtt',
+      'attachment url'
     ];
 
     return ignorablePatterns.some(pattern => errorStr.includes(pattern));
