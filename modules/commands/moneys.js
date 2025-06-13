@@ -40,7 +40,27 @@ module.exports.run = async function ({ api, event, args, Currencies, getText }) 
 		mentions
 	} = event;
 
-	
+	// Fallback getText function if not provided
+	const safeGetText = getText || function(key, ...args) {
+		const fallbackMessages = {
+			"sotienbanthan": "your current balance : %1$",
+			"sotiennguoikhac": "%1's current balance : %2$.",
+			"sendSuccess": "Successfully sent %1$ to %2",
+			"sendNotEnough": "You don't have enough money to send",
+			"sendInvalid": "Invalid amount",
+			"sendSelf": "You cannot send money to yourself",
+			"sendUsage": "Usage: moneys send [amount] @[user]"
+		};
+		
+		if (fallbackMessages[key]) {
+			let message = fallbackMessages[key];
+			for (let i = 0; i < args.length; i++) {
+				message = message.replace(new RegExp(`%${i + 1}`, 'g'), args[i] || '');
+			}
+			return message;
+		}
+		return key;
+	};
 
 	// Check if it's a send command
 	if (args[0] && args[0].toLowerCase() === "send") {
@@ -48,19 +68,19 @@ module.exports.run = async function ({ api, event, args, Currencies, getText }) 
 		
 		// Validate amount
 		if (isNaN(amount) || amount <= 0) {
-			return api.sendMessage(getText("sendInvalid"), threadID, messageID);
+			return api.sendMessage(safeGetText("sendInvalid"), threadID, messageID);
 		}
 		
 		// Check if user mentioned someone
 		if (Object.keys(mentions).length !== 1) {
-			return api.sendMessage(getText("sendUsage"), threadID, messageID);
+			return api.sendMessage(safeGetText("sendUsage"), threadID, messageID);
 		}
 		
 		const receiverID = Object.keys(mentions)[0];
 		
 		// Check if trying to send to self
 		if (receiverID === senderID) {
-			return api.sendMessage(getText("sendSelf"), threadID, messageID);
+			return api.sendMessage(safeGetText("sendSelf"), threadID, messageID);
 		}
 		
 		// Get sender's money
@@ -68,7 +88,7 @@ module.exports.run = async function ({ api, event, args, Currencies, getText }) 
 		
 		// Check if sender has enough money
 		if (senderMoney < amount) {
-			return api.sendMessage(getText("sendNotEnough"), threadID, messageID);
+			return api.sendMessage(safeGetText("sendNotEnough"), threadID, messageID);
 		}
 		
 		// Transfer money
@@ -76,7 +96,7 @@ module.exports.run = async function ({ api, event, args, Currencies, getText }) 
 		await Currencies.increaseMoney(receiverID, amount);
 		
 		return api.sendMessage({
-			body: getText("sendSuccess", amount, mentions[receiverID].replace(/\@/g, "")),
+			body: safeGetText("sendSuccess", amount, mentions[receiverID].replace(/\@/g, "")),
 			mentions: [{
 				tag: mentions[receiverID].replace(/\@/g, ""),
 				id: receiverID
@@ -87,7 +107,7 @@ module.exports.run = async function ({ api, event, args, Currencies, getText }) 
 	// Original balance check functionality
 	if (!args[0]) {
 		const money = (await Currencies.getData(senderID)).money;
-		return api.sendMessage(getText("sotienbanthan", money), threadID, messageID);
+		return api.sendMessage(safeGetText("sotienbanthan", money), threadID, messageID);
 	} else if (Object.keys(event.mentions).length == 1) {
 		var mention = Object.keys(mentions)[0];
 		var money = (await Currencies.getData(mention)).money;
@@ -95,7 +115,7 @@ module.exports.run = async function ({ api, event, args, Currencies, getText }) 
 			money = 0;
 		}
 		return api.sendMessage({
-			body: getText("sotiennguoikhac", mentions[mention].replace(/\@/g, ""), money),
+			body: safeGetText("sotiennguoikhac", mentions[mention].replace(/\@/g, ""), money),
 			mentions: [{
 				tag: mentions[mention].replace(/\@/g, ""),
 				id: mention
