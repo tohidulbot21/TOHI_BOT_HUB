@@ -4,32 +4,32 @@ module.exports = {
 	config: {
 		name: "moneys",
 		aliases: ["money", "balance", "bal", "cash", "coin", "dollar"],
-		version: "3.0.0",
+		version: "3.1.1",
 		hasPermssion: 0,
 		credits: "Made by Tohidul",
 		usePrefix: true,
-		description: "Check your balance, send money, claim daily bonus, see leaderboard and more.",
+		description: "💸 Check, send, see leaderboard!",
 		commandCategory: "economy",
-		usages: "[check/@user] | send [amount] @[user] | daily | top",
+		usages: "[check/@user] | send [amount] @[user] | top",
 		cooldowns: 3,
 	},
 
 	languages: {
 		en: {
-			balance: "💰 Your current balance: %1$",
-			balanceOther: "💰 %1's balance: %2$",
-			sendSuccess: "✅ You sent %1$ to %2!",
-			sendNotEnough: "❌ You don't have enough money to send!",
-			sendInvalid: "❌ Invalid amount!",
-			sendSelf: "❌ You cannot send money to yourself!",
-			dailySuccess: "🎁 You received %1$ daily bonus!",
-			dailyCooldown: "⏰ Please wait %1 hours %2 minutes before claiming daily bonus again.",
-			topRanking: "🏆 Top Richest Users",
-			error: "❌ An error occurred. Please try again.",
-			noMention: "❌ Please mention one user to check/send money.",
-			minSend: "❌ Minimum transfer amount is 10$",
-			usageSend: "📝 Usage: moneys send [amount] @[recipient]",
+			balance: "💸 Balance: %1$",
+			balanceOther: "💸 %1's Balance: %2$",
+			sendSuccess: "✅ Sent %1$ ➡️ %2!",
+			sendNotEnough: "🚫 Not enough funds!",
+			sendInvalid: "❗ Enter a valid amount.",
+			sendSelf: "🙅 Can't send money to yourself!",
+			topRanking: "🏆 RICHEST",
+			error: "⚠️ Error! Try again.",
+			noMention: "🔖 Mention one user.",
+			minSend: "💵 Min transfer: 10$",
+			usageSend: "✏️ Usage: moneys send [amount] @[user]",
 			you: "You",
+			status: m => m > 10000 ? "💎 Premium" : m > 1000 ? "⭐ Standard" : "🆕 Basic",
+			level: m => m > 50000 ? "🏆 Elite" : m > 10000 ? "💎 Rich" : m > 1000 ? "⭐ Avg" : "🌱 Newbie"
 		}
 	},
 
@@ -37,34 +37,24 @@ module.exports = {
 		const { threadID, messageID, senderID, mentions } = event;
 		const lang = this.languages.en;
 
-		// Utilities
-		const formatMoney = amount => {
-			// Handle scientific notation properly
-			const num = Number(amount || 0);
+		const formatMoney = m => {
+			const num = Number(m || 0);
 			if (isNaN(num)) return "0";
-			
-			// Convert scientific notation to regular number
-			if (num >= 1e12) {
-				return (num / 1e12).toFixed(1) + "T"; // Trillion
-			} else if (num >= 1e9) {
-				return (num / 1e9).toFixed(1) + "B"; // Billion
-			} else if (num >= 1e6) {
-				return (num / 1e6).toFixed(1) + "M"; // Million
-			} else if (num >= 1e3) {
-				return (num / 1e3).toFixed(1) + "K"; // Thousand
-			} else {
-				return Math.floor(num).toLocaleString();
-			}
+			if (num >= 1e12) return (num / 1e12).toFixed(1) + "T";
+			if (num >= 1e9) return (num / 1e9).toFixed(1) + "B";
+			if (num >= 1e6) return (num / 1e6).toFixed(1) + "M";
+			if (num >= 1e3) return (num / 1e3).toFixed(1) + "K";
+			return Math.floor(num).toLocaleString();
 		};
 		const getUserName = async id => {
 			try {
-				if (Users && Users.getNameUser) {
+				if (Users?.getNameUser) {
 					const name = await Users.getNameUser(id);
-					if (name && name !== 'undefined' && name.trim() && !name.startsWith('User')) return name;
+					if (name && name !== "undefined" && !name.startsWith("User")) return name;
 				}
-				if (Users && Users.getData) {
+				if (Users?.getData) {
 					const userData = await Users.getData(id);
-					if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim()) return userData.name;
+					if (userData?.name && userData.name !== "undefined") return userData.name;
 				}
 				return `User_${id.slice(-6)}`;
 			} catch {
@@ -73,27 +63,8 @@ module.exports = {
 		};
 
 		try {
-			// DAILY BONUS
-			if ((args[0] && args[0].toLowerCase() === "daily") || args[0] === "-d") {
-				const userData = await Currencies.getData(senderID);
-				const lastDaily = userData.lastDaily || 0;
-				const now = Date.now();
-				const oneDayMs = 24 * 60 * 60 * 1000;
-				if (now - lastDaily < oneDayMs) {
-					const left = oneDayMs - (now - lastDaily);
-					const hours = Math.floor(left / (60 * 60 * 1000));
-					const mins = Math.floor((left % (60 * 60 * 1000)) / (60 * 1000));
-					return api.sendMessage(lang.dailyCooldown.replace("%1", hours).replace("%2", mins), threadID, messageID);
-				}
-				const amount = Math.floor(Math.random() * 500) + 100;
-				await Currencies.increaseMoney(senderID, amount);
-				await Currencies.setData(senderID, { lastDaily: now });
-				return api.sendMessage(lang.dailySuccess.replace("%1", formatMoney(amount)), threadID, messageID);
-			}
-
 			// TOP LEADERBOARD
 			if ((args[0] && args[0].toLowerCase() === "top") || args[0] === "-t") {
-				// Fake leaderboard for demo (replace with actual leaderboard logic if available)
 				const topUsers = [
 					{ id: senderID, name: await getUserName(senderID), money: (await Currencies.getData(senderID)).money || 0 },
 					{ id: "2", name: "Player 2", money: 125000 },
@@ -101,11 +72,11 @@ module.exports = {
 					{ id: "4", name: "Player 4", money: 87200 },
 					{ id: "5", name: "Player 5", money: 76800 }
 				];
-				let msg = `${lang.topRanking}\n━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+				let msg = `${lang.topRanking}\n━━━━━━━━━━\n`;
 				const medals = ["🥇","🥈","🥉","4️⃣","5️⃣"];
 				for (let i = 0; i < topUsers.length; i++)
 					msg += `${medals[i]} ${topUsers[i].name}: ${formatMoney(topUsers[i].money)}$\n`;
-				msg += "━━━━━━━━━━━━━━━━━━━━━━━━\n💡 Keep chatting to earn more money!";
+				msg += "━━━━━━━━━━\n💬 Chat & win!";
 				return api.sendMessage(msg, threadID, messageID);
 			}
 
@@ -131,7 +102,7 @@ module.exports = {
 
 				const receiverName = await getUserName(receiverID);
 				const newBalance = (senderData.money || 0) - amount;
-				const sendMsg = `${lang.sendSuccess.replace("%1", formatMoney(amount)).replace("%2", receiverName)}\n\n💰 Your new balance: ${formatMoney(newBalance)}$\n🎯 Transaction completed!`;
+				const sendMsg = `${lang.sendSuccess.replace("%1", formatMoney(amount)).replace("%2", receiverName)}\n💳 New: ${formatMoney(newBalance)}$`;
 				return api.sendMessage({ body: sendMsg, mentions: [{ tag: receiverName, id: receiverID }] }, threadID, messageID);
 			}
 
@@ -141,38 +112,17 @@ module.exports = {
 				const targetData = await Currencies.getData(targetID);
 				const targetMoney = targetData ? targetData.money || 0 : 0;
 				const targetName = await getUserName(targetID);
-				const status = targetMoney > 10000 ? "💎 Premium" : targetMoney > 1000 ? "⭐ Standard" : "🆕 Basic";
-				const body = `${lang.balanceOther.replace("%1", targetName).replace("%2", formatMoney(targetMoney))}\n\n💳 Account Status: ${status}`;
+				const body = `${lang.balanceOther.replace("%1", targetName).replace("%2", formatMoney(targetMoney))}\n${lang.status(targetMoney)} | ${lang.level(targetMoney)}`;
 				return api.sendMessage({ body, mentions: [{ tag: targetName, id: targetID }] }, threadID, messageID);
 			}
 
 			// CHECK OWN BALANCE
-			try {
-				const userData = await Currencies.getData(senderID);
-				let userMoney = userData ? userData.money || 0 : 0;
-				
-				// Handle scientific notation
-				userMoney = Number(userMoney);
-				if (isNaN(userMoney)) userMoney = 0;
-				
-				console.log(`[MONEYS] User ${senderID} raw money: ${userData?.money}, converted: ${userMoney}`);
-				
-				const userName = await getUserName(senderID);
-				const status = userMoney > 10000 ? "💎 Premium" : userMoney > 1000 ? "⭐ Standard" : "🆕 Basic";
-				const level = userMoney > 50000 ? "🏆 Elite" : userMoney > 10000 ? "💎 Rich" : userMoney > 1000 ? "⭐ Average" : "🌱 Starter";
-				
-				// Special handling for very large amounts
-				if (userMoney >= 1e15) {
-					const body = `💰 Your current balance: ${formatMoney(userMoney)}$\n\n👤 Account Holder: ${userName}\n💳 Account Status: 👑 Ultra VIP\n📊 Wealth Level: 🌟 Billionaire\n\n💡 You have unlimited wealth! 💎\n🎁 Use "moneys daily" for your daily bonus!\n🏆 Use "moneys top" to see the leaderboard!`;
-					return api.sendMessage(body, threadID, messageID);
-				}
-				
-				const body = `${lang.balance.replace("%1", formatMoney(userMoney))}\n\n👤 Account Holder: ${userName}\n💳 Account Status: ${status}\n📊 Wealth Level: ${level}\n\n💡 Use "moneys send [amount] @user" to transfer money!\n🎁 Use "moneys daily" for your daily bonus!\n🏆 Use "moneys top" to see the leaderboard!`;
-				return api.sendMessage(body, threadID, messageID);
-			} catch (error) {
-				console.log(`[MONEYS] Balance check error for ${senderID}: ${error.message}`);
-				return api.sendMessage("💰 Your current balance: 0$\n\n🆕 New account created!", threadID, messageID);
-			}
+			const userData = await Currencies.getData(senderID);
+			let userMoney = userData ? userData.money || 0 : 0;
+			userMoney = Number(userMoney); if (isNaN(userMoney)) userMoney = 0;
+			const userName = await getUserName(senderID);
+			const body = `${lang.balance.replace("%1", formatMoney(userMoney))}\n${lang.status(userMoney)} | ${lang.level(userMoney)}\n👤 ${userName}\n\n💸 Tip: "moneys send [amt] @user"\n🏆 "moneys top"`;
+			return api.sendMessage(body, threadID, messageID);
 
 		} catch (error) {
 			console.log("[MONEYS] Error:", error);
