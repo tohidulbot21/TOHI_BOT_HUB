@@ -1,47 +1,51 @@
-const axios = require("axios");
-const fs = require("fs-extra");
+const axios = require('axios');
+const tinyurl = require('tinyurl');
 
-module.exports.config = {
-  name: "4k",
-  version: "1.0.0",
-  hasPermssion: 0,
-  credits: "Made by Tohidul",
-  premium: false,
-  description: "Enhance a photo to 4K quality",
-  commandCategory: "image",
-  usages: "Reply to an image",
-  cooldowns: 5,
-  usePrefix: true,
-  dependencies: {
-    "fs-extra": ""
-  }
-};
+module.exports = {
+  config: {
+    name: "4k",
+    usePrefix: true,
+    aliases: ["4k", "remini"],
+    version: "1.0",
+    author: "JARiF",
+    countDown: 15,
+    role: 0,
+    longDescription: "Upscale your image.",
+    category: "image",
+    guide: {
+      en: "{pn} reply to an image"
+    }
+  },
 
-module.exports.run = async function ({ api, event, args }) {
-  const cachePath = __dirname + "/cache/enhanced_image.jpg";
-  const { threadID, messageID, messageReply } = event;
-  const imageUrl = messageReply ? messageReply.attachments[0].url : args.join(" ");
+  onStart: async function ({ message, args, event, api }) {
+    const getImageUrl = () => {
+      if (event.type === "message_reply") {
+        const replyAttachment = event.messageReply.attachments[0];
+        if (["photo", "sticker"].includes(replyAttachment?.type)) {
+          return replyAttachment.url;
+        } else {
+          throw new Error("┐⁠(⁠￣⁠ヘ⁠￣⁠)⁠┌ | Must reply to an image.");
+        }
+      } else if (args[0]?.match(/(https?:\/\/.*\.(?:png|jpg|jpeg))/g) || null) {
+        return args[0];
+      } else {
+        throw new Error("(⁠┌⁠・⁠。⁠・⁠)⁠┌ | Reply to an image.");
+      }
+    };
 
-  if (!imageUrl) {
-    api.sendMessage("❌ Please reply to an image to enhance it.", threadID, messageID);
-    return;
-  }
+    try {
+      const imageUrl = await getImageUrl();
+      const shortUrl = await tinyurl.shorten(imageUrl);
 
-  try {
-    const waitMsg = await api.sendMessage("⏳ Please wait while your image is being enhanced to 4K...", threadID);
-    // Call the API to enhance the image
-    const response = await axios.get("https://yt-video-production.up.railway.app/upscale?imageUrl=" + encodeURIComponent(imageUrl));
-    const enhancedUrl = response.data.imageUrl;
-    // Download the enhanced image
-    const enhancedImageBuffer = (await axios.get(enhancedUrl, { responseType: "arraybuffer" })).data;
-    fs.writeFileSync(cachePath, Buffer.from(enhancedImageBuffer, "binary"));
-    // Send the enhanced image
-    api.sendMessage({
-      body: "✅ Your 4K image is ready!",
-      attachment: fs.createReadStream(cachePath)
-    }, threadID, () => fs.unlinkSync(cachePath), messageID);
-    if (waitMsg && waitMsg.messageID) api.unsendMessage(waitMsg.messageID);
-  } catch (err) {
-    api.sendMessage("❌ Error processing image: " + err.message, threadID, messageID);
+      message.reply("ƪ⁠(⁠‾⁠.⁠‾⁠“⁠)⁠┐ | Please wait...");
+
+      const response = await axios.get(`https://www.api.vyturex.com/upscale?imageUrl=${shortUrl}`);
+      const resultUrl = response.data.resultUrl;
+
+      message.reply({ body: "<⁠(⁠￣⁠︶⁠￣⁠)⁠> | Image Enhanced.", attachment: await global.utils.getStreamFromURL(resultUrl) });
+    } catch (error) {
+      message.reply("┐⁠(⁠￣⁠ヘ⁠￣⁠)⁠┌ | Error: " + error.message);
+      // Log error for debugging: console.error(error);
+    }
   }
 };
