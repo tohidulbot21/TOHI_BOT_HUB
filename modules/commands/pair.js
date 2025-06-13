@@ -48,9 +48,9 @@ module.exports = {
   }) {
     try {
     const { loadImage, createCanvas } = require("canvas");
-    let pathImg = __dirname + "/assets/background.png";
-    let pathAvt1 = __dirname + "/assets/any.png";
-    let pathAvt2 = __dirname + "/assets/avatar.png";
+    let pathImg = __dirname + "/cache/img.png";
+    let pathAvt1 = __dirname + "/cache/avatar.png";
+    let pathAvt2 = __dirname + "/cache/avatar.png";
 
     var id1 = event.senderID;
     // Get user name with proper error handling
@@ -61,7 +61,7 @@ module.exports = {
     } catch (error) {
       name1 = await getUserName(api, id1);
     }
-    
+
     if (!name1) {
       return api.sendMessage(
         "❌ Unable to retrieve your user information. Please try again.",
@@ -69,9 +69,9 @@ module.exports = {
         event.messageID
       );
     }
-    
+
     var ThreadInfo = await api.getThreadInfo(event.threadID);
-    
+
     if (!ThreadInfo || !ThreadInfo.userInfo || ThreadInfo.userInfo.length < 2) {
       return api.sendMessage(
         "❌ Unable to retrieve group information or not enough members for pairing.",
@@ -79,7 +79,7 @@ module.exports = {
         event.messageID
       );
     }
-    
+
     var all = ThreadInfo.userInfo;
     for (let c of all) {
       if (c.id == id1) var gender1 = c.gender;
@@ -110,7 +110,7 @@ module.exports = {
         event.messageID
       );
     }
-    
+
     var id2 = ungvien[Math.floor(Math.random() * ungvien.length)];
     // Get paired user name with proper error handling
     let name2;
@@ -120,7 +120,7 @@ module.exports = {
     } catch (error) {
       name2 = await getUserName(api, id2);
     }
-    
+
     if (!name2) {
       return api.sendMessage(
         "❌ Unable to retrieve pairing candidate information. Please try again.",
