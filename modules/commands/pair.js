@@ -177,8 +177,8 @@ module.exports = {
     let canvas = createCanvas(baseImage.width, baseImage.height);
     let ctx = canvas.getContext("2d");
     ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
-    ctx.drawImage(baseAvt1, 111, 175, 330, 330);
-    ctx.drawImage(baseAvt2, 1018, 173, 330, 330);
+    ctx.drawImage(baseAvt1, 111, 175, 330, 330);  // Command user (first side/left)
+    ctx.drawImage(baseAvt2, 1018, 173, 330, 330); // Paired user (second side/right)
     const imageBuffer = canvas.toBuffer();
     fs.writeFileSync(pathImg, imageBuffer);
     fs.removeSync(pathAvt1);
