@@ -38,7 +38,24 @@ module.exports = {
 		const lang = this.languages.en;
 
 		// Utilities
-		const formatMoney = amount => parseInt(amount || 0).toLocaleString();
+		const formatMoney = amount => {
+			// Handle scientific notation properly
+			const num = Number(amount || 0);
+			if (isNaN(num)) return "0";
+			
+			// Convert scientific notation to regular number
+			if (num >= 1e12) {
+				return (num / 1e12).toFixed(1) + "T"; // Trillion
+			} else if (num >= 1e9) {
+				return (num / 1e9).toFixed(1) + "B"; // Billion
+			} else if (num >= 1e6) {
+				return (num / 1e6).toFixed(1) + "M"; // Million
+			} else if (num >= 1e3) {
+				return (num / 1e3).toFixed(1) + "K"; // Thousand
+			} else {
+				return Math.floor(num).toLocaleString();
+			}
+		};
 		const getUserName = async id => {
 			try {
 				if (Users && Users.getNameUser) {
@@ -132,10 +149,24 @@ module.exports = {
 			// CHECK OWN BALANCE
 			try {
 				const userData = await Currencies.getData(senderID);
-				const userMoney = userData ? userData.money || 0 : 0;
+				let userMoney = userData ? userData.money || 0 : 0;
+				
+				// Handle scientific notation
+				userMoney = Number(userMoney);
+				if (isNaN(userMoney)) userMoney = 0;
+				
+				console.log(`[MONEYS] User ${senderID} raw money: ${userData?.money}, converted: ${userMoney}`);
+				
 				const userName = await getUserName(senderID);
 				const status = userMoney > 10000 ? "💎 Premium" : userMoney > 1000 ? "⭐ Standard" : "🆕 Basic";
 				const level = userMoney > 50000 ? "🏆 Elite" : userMoney > 10000 ? "💎 Rich" : userMoney > 1000 ? "⭐ Average" : "🌱 Starter";
+				
+				// Special handling for very large amounts
+				if (userMoney >= 1e15) {
+					const body = `💰 Your current balance: ${formatMoney(userMoney)}$\n\n👤 Account Holder: ${userName}\n💳 Account Status: 👑 Ultra VIP\n📊 Wealth Level: 🌟 Billionaire\n\n💡 You have unlimited wealth! 💎\n🎁 Use "moneys daily" for your daily bonus!\n🏆 Use "moneys top" to see the leaderboard!`;
+					return api.sendMessage(body, threadID, messageID);
+				}
+				
 				const body = `${lang.balance.replace("%1", formatMoney(userMoney))}\n\n👤 Account Holder: ${userName}\n💳 Account Status: ${status}\n📊 Wealth Level: ${level}\n\n💡 Use "moneys send [amount] @user" to transfer money!\n🎁 Use "moneys daily" for your daily bonus!\n🏆 Use "moneys top" to see the leaderboard!`;
 				return api.sendMessage(body, threadID, messageID);
 			} catch (error) {
