@@ -31,10 +31,20 @@ module.exports = {
       const n = apis.data.api;
       const res = await axios.get(`${n}/random?name=${encodeURIComponent(nameParam)}`);
 
+      // Check if response has the expected structure
+      if (!res.data || !res.data.data) {
+        return nayan.reply("❌ No video data found. Please try again later.", events.threadID, events.messageID);
+      }
+
       const videoUrl = res.data.data.url;
-      const name = res.data.data.name;
-      const cp = res.data.data.cp;
-      const ln = res.data.data.length;
+      const name = res.data.data.name || "Unknown";
+      const cp = res.data.data.cp || "No caption available";
+      const ln = res.data.data.length || "0";
+
+      if (!videoUrl) {
+        return nayan.reply("❌ Video URL not found. Please try again later.", events.threadID, events.messageID);
+      }
+
       const filePath = __dirname + "/cache/video.mp4";
 
       const file = fs.createWriteStream(filePath);
@@ -45,6 +55,10 @@ module.exports = {
             body: `${cp}\n\n𝐓𝐨𝐭𝐚𝐥 𝐕𝐢𝐝𝐞𝐨𝐬: [${ln}]\n𝐀𝐝𝐝𝐞𝐝 𝐓𝐡𝐢𝐬 𝐕𝐢𝐝𝐞𝐨 𝐓𝐨 𝐓𝐡𝐞 𝐀𝐩𝐢 𝐁𝐲 [${name}]`,
             attachment: fs.createReadStream(filePath)
           }, events.threadID, events.messageID);
+        })
+        .on("error", (error) => {
+          console.error("Download error:", error);
+          return nayan.reply("❌ Failed to download video. Please try again later.", events.threadID, events.messageID);
         });
 
     } catch (err) {
