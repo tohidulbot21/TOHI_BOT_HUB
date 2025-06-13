@@ -1,101 +1,167 @@
+
 module.exports = function ({ models, Users }) {
 	const { readFileSync, writeFileSync } = require("fs-extra");
 	var path = __dirname + "/data/usersData.json";
+    
+    let Currencies = {};
     try {
-        var Currencies = require(path)
+        const data = readFileSync(path, 'utf8');
+        Currencies = JSON.parse(data);
     } catch {
-        writeFileSync(path, "{}", { flag: 'a+' });
+        writeFileSync(path, "{}", 'utf8');
+        Currencies = {};
     }
 
 	async function saveData(data) {
         try {
             if (!data) throw new Error('Data cannot be left blank');
-            writeFileSync(path, JSON.stringify(data, null, 4))
-            return true
+            writeFileSync(path, JSON.stringify(data, null, 4), 'utf8');
+            return true;
         } catch (error) {
-            return false
+            console.log(`[CURRENCIES] Save error: ${error.message}`);
+            return false;
         }
     }
+
 	async function getData(userID) {
 		try {
 			if (!userID) throw new Error("User ID cannot be blank");
+            userID = String(userID);
             if (isNaN(userID)) throw new Error("Invalid user ID");
             
-            // Check if user exists in currencies data, if not try to get from Users
+            // Reload data from file to ensure we have latest data
+            try {
+                const fileData = readFileSync(path, 'utf8');
+                Currencies = JSON.parse(fileData);
+            } catch (reloadError) {
+                console.log(`[CURRENCIES] Failed to reload data: ${reloadError.message}`);
+            }
+            
+            // Check if user exists in currencies data
             if (!Currencies.hasOwnProperty(userID)) {
-                console.log(`User ID: ${userID} does not exist in Database, attempting to create...`);
+                console.log(`[CURRENCIES] User ID: ${userID} does not exist, creating...`);
                 
-                // Try to create user data
+                // Create user data
+                const newUserData = {
+                    userID: userID,
+                    money: 0,
+                    exp: 0,
+                    createTime: {
+                        timestamp: Date.now()
+                    },
+                    data: {
+                        timestamp: Date.now()
+                    },
+                    lastUpdate: Date.now()
+                };
+                
+                Currencies[userID] = newUserData;
+                await saveData(Currencies);
+                
+                // Also try to create in Users database
                 try {
                     await Users.createData(userID);
                 } catch (createError) {
-                    console.log(`Failed to create user ${userID}: ${createError.message}`);
+                    console.log(`[CURRENCIES] Failed to create user in Users DB: ${createError.message}`);
                 }
+                
+                return newUserData;
             }
             
-			const data = await Users.getData(userID);
-			return data || { userID: userID, money: 0, exp: 0 };
-		} 
-		catch (error) {
-			console.log(`Error getting currency data for ${userID}: ${error.message}`);
+            // Return existing user data
+            const userData = Currencies[userID];
+            
+            // Ensure money and exp are numbers
+            if (typeof userData.money !== 'number') userData.money = 0;
+            if (typeof userData.exp !== 'number') userData.exp = 0;
+            
+            return userData;
+            
+		} catch (error) {
+			console.log(`[CURRENCIES] Error getting data for ${userID}: ${error.message}`);
 			// Return default data instead of false
-			return { userID: userID, money: 0, exp: 0 };
-		};
+			return { userID: userID, money: 0, exp: 0, createTime: { timestamp: Date.now() }, data: { timestamp: Date.now() }, lastUpdate: Date.now() };
+		}
 	}
 
 	async function setData(userID, options = {}) {
 		try {
             if (!userID) throw new Error("User ID cannot be blank");
+            userID = String(userID);
             if (isNaN(userID)) throw new Error("Invalid user ID");
-            if (!userID) throw new Error("userID cannot be empty");
-            if (!Currencies.hasOwnProperty(userID)) throw new Error(`User ID: ${userID} does not exist in Database`);
             if (typeof options != 'object') throw new Error("The options parameter passed must be an object");
-            Currencies[userID] = {...Currencies[userID], ...options};
+            
+            // Ensure user exists
+            if (!Currencies.hasOwnProperty(userID)) {
+                await getData(userID); // This will create the user
+            }
+            
+            Currencies[userID] = {...Currencies[userID], ...options, lastUpdate: Date.now()};
             await saveData(Currencies);
             return Currencies[userID];
         } catch (error) {
-            return false
+            console.log(`[CURRENCIES] Set data error for ${userID}: ${error.message}`);
+            return false;
         }
 	}
 
 	async function delData(userID, callback) {
 		try {
             if (!userID) throw new Error("User ID cannot be blank");
+            userID = String(userID);
             if (isNaN(userID)) throw new Error("Invalid user ID");
-            if (!Currencies.hasOwnProperty(userID)) throw new Error(`User ID: ${userID} does not exist in Database`);
+            
+            if (!Currencies.hasOwnProperty(userID)) {
+                await getData(userID); // Create if doesn't exist
+            }
+            
             Currencies[userID].money = 0;
+            Currencies[userID].lastUpdate = Date.now();
             await saveData(Currencies);
+            
             if (callback && typeof callback == "function") callback(null, Currencies);
             return Currencies;
         } catch (error) {
+            console.log(`[CURRENCIES] Delete data error for ${userID}: ${error.message}`);
             if (callback && typeof callback == "function") callback(error, null);
-            return false
+            return false;
         }
 	}
 
 	async function increaseMoney(userID, money) {
-		if (typeof money != 'number') throw global.getText("currencies", "needNumber");
 		try {
-			let balance = (await getData(userID)).money;
-			await setData(userID, { money: balance + money });
-			return true;
-		}
-		catch (error) {
-			console.error(error);
-			throw new Error(error);
-		}
+            if (typeof money != 'number') throw new Error("Money must be a number");
+            if (money < 0) throw new Error("Money cannot be negative");
+            
+            userID = String(userID);
+            let userData = await getData(userID);
+            let currentMoney = userData.money || 0;
+            
+            await setData(userID, { money: currentMoney + money });
+            return true;
+        } catch (error) {
+            console.log(`[CURRENCIES] Increase money error for ${userID}: ${error.message}`);
+            return false;
+        }
 	}
 
 	async function decreaseMoney(userID, money) {
-		if (typeof money != 'number') throw global.getText("currencies", "needNumber");
 		try {
-			let balance = (await getData(userID)).money;
-			if (balance < money) return false;
-			await setData(userID, { money: balance - money });
-			return true;
-		} catch (error) {
-			throw new Error(error);
-		}
+            if (typeof money != 'number') throw new Error("Money must be a number");
+            if (money < 0) throw new Error("Money cannot be negative");
+            
+            userID = String(userID);
+            let userData = await getData(userID);
+            let currentMoney = userData.money || 0;
+            
+            if (currentMoney < money) return false;
+            
+            await setData(userID, { money: currentMoney - money });
+            return true;
+        } catch (error) {
+            console.log(`[CURRENCIES] Decrease money error for ${userID}: ${error.message}`);
+            return false;
+        }
 	}
 
 	return {

@@ -43,15 +43,15 @@ module.exports = {
 			try {
 				if (Users && Users.getNameUser) {
 					const name = await Users.getNameUser(id);
-					if (name && name !== 'undefined') return name;
+					if (name && name !== 'undefined' && name.trim() && !name.startsWith('User')) return name;
 				}
 				if (Users && Users.getData) {
 					const userData = await Users.getData(id);
-					if (userData && userData.name) return userData.name;
+					if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim()) return userData.name;
 				}
-				return "Unknown User";
+				return `User_${id.slice(-6)}`;
 			} catch {
-				return "Unknown User";
+				return `User_${id.slice(-6)}`;
 			}
 		};
 
@@ -130,13 +130,18 @@ module.exports = {
 			}
 
 			// CHECK OWN BALANCE
-			const userData = await Currencies.getData(senderID);
-			const userMoney = userData ? userData.money || 0 : 0;
-			const userName = await getUserName(senderID);
-			const status = userMoney > 10000 ? "💎 Premium" : userMoney > 1000 ? "⭐ Standard" : "🆕 Basic";
-			const level = userMoney > 50000 ? "🏆 Elite" : userMoney > 10000 ? "💎 Rich" : userMoney > 1000 ? "⭐ Average" : "🌱 Starter";
-			const body = `${lang.balance.replace("%1", formatMoney(userMoney))}\n\n👤 Account Holder: ${userName}\n💳 Account Status: ${status}\n📊 Wealth Level: ${level}\n\n💡 Use "moneys send [amount] @user" to transfer money!\n🎁 Use "moneys daily" for your daily bonus!\n🏆 Use "moneys top" to see the leaderboard!`;
-			return api.sendMessage(body, threadID, messageID);
+			try {
+				const userData = await Currencies.getData(senderID);
+				const userMoney = userData ? userData.money || 0 : 0;
+				const userName = await getUserName(senderID);
+				const status = userMoney > 10000 ? "💎 Premium" : userMoney > 1000 ? "⭐ Standard" : "🆕 Basic";
+				const level = userMoney > 50000 ? "🏆 Elite" : userMoney > 10000 ? "💎 Rich" : userMoney > 1000 ? "⭐ Average" : "🌱 Starter";
+				const body = `${lang.balance.replace("%1", formatMoney(userMoney))}\n\n👤 Account Holder: ${userName}\n💳 Account Status: ${status}\n📊 Wealth Level: ${level}\n\n💡 Use "moneys send [amount] @user" to transfer money!\n🎁 Use "moneys daily" for your daily bonus!\n🏆 Use "moneys top" to see the leaderboard!`;
+				return api.sendMessage(body, threadID, messageID);
+			} catch (error) {
+				console.log(`[MONEYS] Balance check error for ${senderID}: ${error.message}`);
+				return api.sendMessage("💰 Your current balance: 0$\n\n🆕 New account created!", threadID, messageID);
+			}
 
 		} catch (error) {
 			console.log("[MONEYS] Error:", error);
