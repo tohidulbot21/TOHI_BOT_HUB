@@ -1,6 +1,6 @@
 module.exports.config = {
-	name: "bal",
-	aliases: ["money", "balance", "moneys"],
+	name: "moneys",
+	aliases: ["money", "balance", "bal"],
 	version: "1.0.2",
 	permission: 0,
 	credits: "TOHI-BOT-HUB",
