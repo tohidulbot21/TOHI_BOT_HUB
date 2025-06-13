@@ -14,7 +14,8 @@ module.exports = {
     guide: "{pn}"
   },
 
-  onStart: async function ({ message }) {
+  onStart: async function ({ api, event }) {
+    const { threadID, messageID } = event;
     const links = [
       "https://i.imgur.com/arWjsNg.jpg",
       "https://i.imgur.com/uJYvMR0.jpg",
@@ -47,10 +48,43 @@ module.exports = {
       "https://i.imgur.com/QGrvMZL.jpg"
     ];
 
-    const img = links[Math.floor(Math.random() * links.length)];
-    message.send({
-      body: '✨ Here comes the Magician! 🐐 Neymar Jr ✨',
-      attachment: await global.utils.getStreamFromURL(img)
-    });
+    try {
+      const img = links[Math.floor(Math.random() * links.length)];
+      const axios = require('axios');
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Download image
+      const response = await axios.get(img, { responseType: 'stream' });
+      const imagePath = path.join(__dirname, 'tmp', `neymar_${Date.now()}.jpg`);
+      
+      // Ensure tmp directory exists
+      const tmpDir = path.join(__dirname, 'tmp');
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
+      }
+      
+      const writer = fs.createWriteStream(imagePath);
+      response.data.pipe(writer);
+      
+      writer.on('finish', () => {
+        api.sendMessage({
+          body: '✨ Here comes the Magician! 🐐 Neymar Jr ✨',
+          attachment: fs.createReadStream(imagePath)
+        }, threadID, () => {
+          // Clean up the file after sending
+          fs.unlinkSync(imagePath);
+        }, messageID);
+      });
+      
+      writer.on('error', (error) => {
+        console.log('Error downloading Neymar image:', error);
+        api.sendMessage('✨ Here comes the Magician! 🐐 Neymar Jr ✨', threadID, messageID);
+      });
+      
+    } catch (error) {
+      console.log('Neymar command error:', error);
+      api.sendMessage('✨ Here comes the Magician! 🐐 Neymar Jr ✨', threadID, messageID);
+    }
   }
 };
