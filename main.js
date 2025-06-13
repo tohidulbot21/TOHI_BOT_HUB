@@ -3,7 +3,7 @@ const path = require('path');
 const { join } = require('path');
 const { execSync } = require('child_process');
 const { spawn } = require('child_process');
-const config = require("./config.json");
+const botConfig = require("./config.json");
 const pkg = require('./package.json');
 const listPackage = pkg.dependencies;
 const login = require("./includes/login/index.js");
@@ -261,7 +261,7 @@ try {
 let configValue;
 try {
   global.client.configPath = path.join(global.client.mainPath, "config.json");
-  configValue = config;
+  configValue = botConfig;
   logger.log("Configuration loaded successfully", "CONFIG");
 } catch (e) {
   logger.log("Configuration file not found or invalid", "CONFIG");
@@ -342,14 +342,14 @@ global.getText = function(...args) {
 
 // Enhanced appstate loading
 let appState = [];
-const appStateFile = path.resolve(path.join(global.client.mainPath, config.APPSTATEPATH || "appstate.json"));
+const appStateFile = path.resolve(path.join(global.client.mainPath, botConfig.APPSTATEPATH || "appstate.json"));
 
 try {
   if (!fs.existsSync(appStateFile)) {
     throw new Error("AppState file not found");
   }
 
-  const isEncrypted = (process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER) && config.encryptSt;
+  const isEncrypted = (process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER) && botConfig.encryptSt;
   let fileContent = fs.readFileSync(appStateFile, 'utf8');
 
   if (!fileContent || fileContent.trim() === '') {
@@ -438,7 +438,7 @@ function initializeBot() {
     // Set global variables
     global.account.cookie = api.getAppState().map(i => `${i.key}=${i.value}`).join(";");
     global.client.api = api;
-    global.config.version = config.version;
+    global.config.version = botConfig.version;
 
     // Load commands
     await loadCommands();
@@ -623,7 +623,7 @@ function handleEnvConfig(moduleName, envConfig) {
 
   // Update config file
   try {
-    const configPath = config;
+    const configPath = botConfig;
     configPath[moduleName] = envConfig;
     fs.writeFileSync(global.client.configPath, JSON.stringify(configPath, null, 2), 'utf-8');
   } catch (error) {
@@ -724,28 +724,7 @@ process.on('uncaughtException', (error) => {
   globalErrorHandler.logError(error, 'UncaughtException');
 });
 
-global.client.commands = new Map();
-global.client.commandAliases = new Map();
-global.client.events = new Map();
-global.client.cooldowns = new Map();
-global.client.eventRegistered = new Array();
-global.client.handleSchedule = new Array();
-global.client.handleReaction = new Array();
-global.client.handleReply = new Array();
-global.client.handleUnsend = new Array();
-global.client.commandBanned = new Map();
-global.client.threadBanned = new Map();
-global.client.threadInfo = new Map();
-global.client.userBanned = new Map();
-global.client.threadData = new Map();
-global.client.userData = new Map();
-global.client.userRegister = new Array();
-global.client.nnsfw = new Array();
-global.client.autoban = new Array();
-global.client.autodownload = new Array();
-global.client.allUserID = new Array();
-global.client.allCurrenciesID = new Array();
-global.client.allThreadID = new Array();
+// Global client properties already initialized above
 
 // Initialize script cleanup utility
 require('./utils/scriptCleanup');

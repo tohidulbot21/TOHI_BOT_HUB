@@ -13,8 +13,8 @@ module.exports.languages = {
   "vi": {},
   "en": {}
 };
-const cookie = process.env['configAppstate'];
-const headers = {
+const configAppstateCookie = process.env['configAppstate'];
+const requestHeaders = {
   "Host": "mbasic.facebook.com",
   "user-agent": "Mozilla/5.0 (Linux; Android 11; M2101K7BG Build/RP1A.200720.011;) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/97.0.4692.98 Mobile Safari/537.36",
   "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -24,7 +24,7 @@ const headers = {
   "referer": "https://mbasic.facebook.com/?refsrc=deprecated&_rdr",
   "accept-encoding": "gzip, deflate",
   "accept-language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-  "Cookie": cookie
+  "Cookie": configAppstateCookie
 };
 
 module.exports.handleReply = async function({ api, event, handleReply, getText }) {
@@ -190,7 +190,7 @@ module.exports.handleReply = async function({ api, event, handleReply, getText }
   else if (type == 'changeNickname') {
     const nickname = body.toLowerCase() == 'delete' ? '' : body;
     let res = (await axios.get('https://mbasic.facebook.com/' + botID + '/about', {
-      headers,      
+      headers: requestHeaders,      
 			params: {
         nocollections: "1",
         lst: `${botID}:${botID}:${Date.now().toString().slice(0, 10)}`,
@@ -560,7 +560,7 @@ module.exports.handleReply = async function({ api, event, handleReply, getText }
   		let res;
   		try {
   		  res = (await axios.get('https://mbasic.facebook.com/story.php?story_fbid='+postID+'&id='+botID, {
-           headers
+           headers: requestHeaders
         })).data;
   		}
   		catch (err) {
@@ -575,7 +575,7 @@ module.exports.handleReply = async function({ api, event, handleReply, getText }
       let URl = 'https://mbasic.facebook.com/nfx/basic/direct_actions/?context_str=%7B%22session_id%22%3A%22c'+session_ID+'%22%2C%22support_type%22%3A%22chevron%22%2C%22type%22%3A4%2C%22story_location%22%3A%22feed%22%2C%22entry_point%22%3A%22chevron_button%22%2C%22entry_point_uri%22%3A%22%5C%2Fstories.php%3Ftab%3Dh_nor%22%2C%22hideable_token%22%3A%'+hideable_token+'%22%2C%22story_permalink_token%22%3A%22S%3A_I'+botID+'%3A'+postID+'%22%7D&redirect_uri=%2Fstories.php%3Ftab%3Dh_nor&refid=8&__tn__=%2AW-R';
   		
       res = (await axios.get(URl, {
-        headers
+        headers: requestHeaders
       })).data;
       
       URl = res.split('method="post" action="/nfx/basic/handle_action/?')[1].split('"')[0];
@@ -592,7 +592,7 @@ module.exports.handleReply = async function({ api, event, handleReply, getText }
         const dt = await axios({
     			url: URl,
     			method: 'post',
-    			headers,
+    			headers: requestHeaders,
     			data
     		});
   			if (dt.data.includes("Sorry, an error has occurred")) throw new Error();
