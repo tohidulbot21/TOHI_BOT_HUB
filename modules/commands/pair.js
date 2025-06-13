@@ -49,8 +49,8 @@ module.exports = {
     try {
     const { loadImage, createCanvas } = require("canvas");
     let pathImg = __dirname + "/cache/img.png";
-    let pathAvt1 = __dirname + "/cache/avatar.png";
-    let pathAvt2 = __dirname + "/cache/avatar.png";
+    let pathAvt1 = __dirname + `/cache/avatar_${id1}.png`;
+    let pathAvt2 = __dirname + `/cache/avatar_${id2}.png`;
 
     var id1 = event.senderID;
     // Get user name with proper error handling
