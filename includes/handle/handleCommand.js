@@ -158,7 +158,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
           }
         }
       }
-      
+
       if (!command) return;
 
       const commandConfig = command.config;

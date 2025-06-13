@@ -32,7 +32,7 @@ module.exports.languages = {
 	}
 };
 
-module.exports.run = async function ({ api, event, args, Currencies, getText }) {
+module.exports.run = async function ({ api, event, args, Currencies, getText, Users, Threads }) {
 	const {
 		threadID,
 		messageID,
