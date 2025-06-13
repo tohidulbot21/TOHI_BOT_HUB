@@ -21,15 +21,15 @@ module.exports = {
 
 
 
-    onStart: async function ({ message, event, args }) {
+    onStart: async function ({ api, event, args }) {
         const mention = Object.keys(event.mentions);
-        if (mention.length == 0) return message.reply("mention");
+        if (mention.length == 0) return api.sendMessage("mention", event.threadID, event.messageID);
         else if (mention.length == 1) {
             const one = event.senderID, two = mention[0];
-            bal(one, two).then(ptth => { message.reply({ body: "it's him🕸️", attachment: fs.createReadStream(ptth) }) })
+            bal(one, two).then(ptth => { api.sendMessage({ body: "it's him🕸️", attachment: fs.createReadStream(ptth) }, event.threadID, event.messageID) })
         } else {
             const one = mention[1], two = mention[0];
-            bal(one, two).then(ptth => { message.reply({ body: "he is not me🕸️", attachment: fs.createReadStream(ptth) }) })
+            bal(one, two).then(ptth => { api.sendMessage({ body: "he is not me🕸️", attachment: fs.createReadStream(ptth) }, event.threadID, event.messageID) })
         }
     }
 
