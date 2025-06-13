@@ -91,23 +91,23 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
       // Check if group is approved before executing any commands
       const fs = require('fs');
       const configPath = require('path').join(__dirname, '../../config.json');
-      let config = {};
+      let approvalConfig = {};
 
       try {
         const configData = fs.readFileSync(configPath, 'utf8');
-        config = JSON.parse(configData);
+        approvalConfig = JSON.parse(configData);
       } catch (error) {
-        config = { APPROVAL: { approvedGroups: [] } };
+        approvalConfig = { APPROVAL: { approvedGroups: [] } };
       }
 
       // Initialize approval system if not exists
-      if (!config.APPROVAL) {
-        config.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
+      if (!approvalConfig.APPROVAL) {
+        approvalConfig.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
       }
 
       // For group chats, check if group is approved
       if (event.threadID && event.threadID !== event.senderID) {
-        const isApproved = config.APPROVAL.approvedGroups.includes(String(event.threadID));
+        const isApproved = approvalConfig.APPROVAL.approvedGroups.includes(String(event.threadID));
         const isOwner = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
 
         // If group is not approved and sender is not owner, block all commands
@@ -142,18 +142,18 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
       const command = commands.get(commandName);
       if (!command) return;
 
-      const { config } = command;
+      const commandConfig = command.config;
 
       // Permission check
-      if (config.permission > 0) {
+      if (commandConfig.permission > 0) {
         const isAdmin = global.config.ADMINBOT?.includes(senderID);
-        if (!isAdmin && config.permission >= 2) {
+        if (!isAdmin && commandConfig.permission >= 2) {
           return; // Silently ignore for non-admins
         }
       }
 
       // Cooldown check
-      if (config.cooldowns && !checkCooldown(senderID, commandName, config.cooldowns)) {
+      if (commandConfig.cooldowns && !checkCooldown(senderID, commandName, commandConfig.cooldowns)) {
         return; // Silently ignore cooldown violations
       }
 
@@ -249,7 +249,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         Users,
         Threads,
         Currencies,
-        permssion: config.permission || 0,
+        permssion: commandConfig.permission || 0,
         getText: fallbackGetText,
         logger
       };
