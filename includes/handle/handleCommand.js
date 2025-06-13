@@ -29,7 +29,11 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
       'cannot read properties of undefined',
       'getname is not a function',
       'mqtt',
-      'attachment url'
+      'attachment url',
+      'has no valid run or onstart function',
+      'command has no valid',
+      'no valid function',
+      'function is not defined'
     ];
 
     return ignorablePatterns.some(pattern => errorStr.includes(pattern));
@@ -57,13 +61,16 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
   // Command execution without timeout
   async function executeCommand(command, Obj, commandName) {
     try {
-      // Support both run and onStart functions
+      // Support run, onStart, and start functions
       if (typeof command.run === 'function') {
         return await command.run(Obj);
       } else if (typeof command.onStart === 'function') {
         return await command.onStart(Obj);
+      } else if (typeof command.start === 'function') {
+        return await command.start(Obj);
       } else {
-        throw new Error(`Command ${commandName} has no valid run or onStart function`);
+        // Silently ignore commands without valid functions
+        return;
       }
     } catch (error) {
       throw error;

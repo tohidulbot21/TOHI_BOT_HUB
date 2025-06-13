@@ -21,7 +21,7 @@ module.exports = {
     }
   },
 
-  start: async function ({ nayan, events, args, lang }) {
+  run: async function ({ nayan, events, args, lang }) {
     const axios = require("axios");
     const nameParam = args.join(" ");
     if (!args[0]) return nayan.reply(lang("missing"), events.threadID, events.messageID);
