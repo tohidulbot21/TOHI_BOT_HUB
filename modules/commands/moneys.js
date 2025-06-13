@@ -2,7 +2,7 @@ module.exports.config = {
 	name: "moneys",
 	aliases: ["money", "balance", "bal"],
 	version: "1.0.2",
-	permission: 0,
+	hasPermssion: 0,
 	credits: "TOHI-BOT-HUB",
 	usePrefix: true,
 	description: "check the amount of yourself or the person tagged, or send money",
@@ -40,22 +40,35 @@ module.exports.run = async function ({ api, event, args, Currencies, getText, Us
 		mentions
 	} = event;
 
-	// Fallback getText function if not provided
-	const safeGetText = getText || function(key, ...args) {
+	// Enhanced getText function with proper fallbacks
+	const safeGetText = (key, ...replaceArgs) => {
+		try {
+			// Try to use provided getText first
+			if (getText && typeof getText === 'function') {
+				const result = getText(key, ...replaceArgs);
+				if (result && result !== key) {
+					return result;
+				}
+			}
+		} catch (e) {
+			// If getText fails, use fallback
+		}
+
+		// Enhanced fallback messages
 		const fallbackMessages = {
-			"sotienbanthan": "your current balance : %1$",
-			"sotiennguoikhac": "%1's current balance : %2$.",
-			"sendSuccess": "Successfully sent %1$ to %2",
-			"sendNotEnough": "You don't have enough money to send",
-			"sendInvalid": "Invalid amount",
-			"sendSelf": "You cannot send money to yourself",
+			"sotienbanthan": "💰 Your current balance: %1$",
+			"sotiennguoikhac": "💰 %1's current balance: %2$",
+			"sendSuccess": "✅ Successfully sent %1$ to %2",
+			"sendNotEnough": "❌ You don't have enough money to send",
+			"sendInvalid": "❌ Invalid amount",
+			"sendSelf": "❌ You cannot send money to yourself",
 			"sendUsage": "Usage: moneys send [amount] @[user]"
 		};
 		
 		if (fallbackMessages[key]) {
 			let message = fallbackMessages[key];
-			for (let i = 0; i < args.length; i++) {
-				message = message.replace(new RegExp(`%${i + 1}`, 'g'), args[i] || '');
+			for (let i = 0; i < replaceArgs.length; i++) {
+				message = message.replace(new RegExp(`%${i + 1}`, 'g'), replaceArgs[i] || '');
 			}
 			return message;
 		}
@@ -106,22 +119,30 @@ module.exports.run = async function ({ api, event, args, Currencies, getText, Us
 	
 	// Original balance check functionality
 	if (!args[0]) {
-		const money = (await Currencies.getData(senderID)).money;
-		return api.sendMessage(safeGetText("sotienbanthan", money), threadID, messageID);
-	} else if (Object.keys(event.mentions).length == 1) {
-		var mention = Object.keys(mentions)[0];
-		var money = (await Currencies.getData(mention)).money;
-		if (!money) {
-			money = 0;
+		try {
+			const userData = await Currencies.getData(senderID);
+			const money = userData ? userData.money || 0 : 0;
+			return api.sendMessage(safeGetText("sotienbanthan", money), threadID, messageID);
+		} catch (error) {
+			return api.sendMessage("💰 Your current balance: 0$", threadID, messageID);
 		}
-		return api.sendMessage({
-			body: safeGetText("sotiennguoikhac", mentions[mention].replace(/\@/g, ""), money),
-			mentions: [{
-				tag: mentions[mention].replace(/\@/g, ""),
-				id: mention
-			}]
-		}, threadID, messageID);
+	} else if (Object.keys(event.mentions).length == 1) {
+		try {
+			var mention = Object.keys(mentions)[0];
+			const userData = await Currencies.getData(mention);
+			var money = userData ? userData.money || 0 : 0;
+			
+			return api.sendMessage({
+				body: safeGetText("sotiennguoikhac", mentions[mention].replace(/\@/g, ""), money),
+				mentions: [{
+					tag: mentions[mention].replace(/\@/g, ""),
+					id: mention
+				}]
+			}, threadID, messageID);
+		} catch (error) {
+			return api.sendMessage("❌ Unable to fetch user balance", threadID, messageID);
+		}
 	} else {
-		return global.utils.throwError(this.config.name, threadID, messageID);
+		return api.sendMessage("❌ Invalid usage. Use: moneys or moneys @mention", threadID, messageID);
 	}
 };
