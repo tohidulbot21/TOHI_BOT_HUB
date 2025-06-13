@@ -35,6 +35,7 @@ module.exports = {
     commandName,
     getLang,
   }) {
+    try {
     const { loadImage, createCanvas } = require("canvas");
     let pathImg = __dirname + "/assets/background.png";
     let pathAvt1 = __dirname + "/assets/any.png";
@@ -42,7 +43,25 @@ module.exports = {
 
     var id1 = event.senderID;
     var name1 = await usersData.getName(id1);
+    
+    if (!name1) {
+      return api.sendMessage(
+        "❌ Unable to retrieve your user information. Please try again.",
+        event.threadID,
+        event.messageID
+      );
+    }
+    
     var ThreadInfo = await api.getThreadInfo(event.threadID);
+    
+    if (!ThreadInfo || !ThreadInfo.userInfo || ThreadInfo.userInfo.length < 2) {
+      return api.sendMessage(
+        "❌ Unable to retrieve group information or not enough members for pairing.",
+        event.threadID,
+        event.messageID
+      );
+    }
+    
     var all = ThreadInfo.userInfo;
     for (let c of all) {
       if (c.id == id1) var gender1 = c.gender;
@@ -66,8 +85,24 @@ module.exports = {
         if (u.id !== id1 && u.id !== botID) ungvien.push(u.id);
       }
     }
+    if (ungvien.length === 0) {
+      return api.sendMessage(
+        "❌ No suitable pairing candidates found in this group!",
+        event.threadID,
+        event.messageID
+      );
+    }
+    
     var id2 = ungvien[Math.floor(Math.random() * ungvien.length)];
     var name2 = await usersData.getName(id2);
+    
+    if (!name2) {
+      return api.sendMessage(
+        "❌ Unable to retrieve pairing candidate information. Please try again.",
+        event.threadID,
+        event.messageID
+      );
+    }
     var rd1 = Math.floor(Math.random() * 100) + 1;
     var cc = ["0", "-1", "99,99", "-99", "-100", "101", "0,01"];
     var rd2 = cc[Math.floor(Math.random() * cc.length)];
@@ -139,5 +174,13 @@ module.exports = {
       () => fs.unlinkSync(pathImg),
       event.messageID,
     );
+    } catch (error) {
+      console.error("Error in pair command:", error);
+      return api.sendMessage(
+        "❌ An error occurred while processing the pair command. Please try again later.",
+        event.threadID,
+        event.messageID
+      );
+    }
   },
 };
