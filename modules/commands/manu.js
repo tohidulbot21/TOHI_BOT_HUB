@@ -120,6 +120,27 @@ module.exports.handleReply = async function({ api, event, handleReply, getText }
   if (handleReply.author != event.senderID) return;
   const commands = global.client.commands;
   const prefix = global.config.PREFIX || "/";
+  
+  // Fallback getText function if not provided
+  const safeGetText = getText || function(key, ...args) {
+    const fallbackMessages = {
+      "helpeply": "🍁 BOT MENU 🍂\nHere's the command group:\n➢ %2 ✘\n✘━━━━━━━━━━━✘\n%3\n➢ Reply with the number to see detailed usage for that command ❤",
+      "moduleInfo": "「 %1 」\n%2\n\n❯ Usage: %3\n❯ Category: %4\n❯ Cooldown: %5 seconds\n❯ Permission: %6\n\n» Module code by %7 «",
+      "user": "User",
+      "adminGroup": "Group Admin", 
+      "adminBot": "Bot Admin"
+    };
+    
+    if (fallbackMessages[key]) {
+      let message = fallbackMessages[key];
+      for (let i = 0; i < args.length; i++) {
+        message = message.replace(new RegExp(`%${i + 1}`, 'g'), args[i] || '');
+      }
+      return message;
+    }
+    return key;
+  };
+  
   switch (handleReply.type) {
     case "replyhelp": {
       const groupIdx = parseInt(event.body) - 1;
@@ -132,7 +153,7 @@ module.exports.handleReply = async function({ api, event, handleReply, getText }
         msg += `${idx + 1}. ${prefix}${cmd.config.name}\n`;
       });
       return api.sendMessage(
-        getText("helpeply", global.config.BOTNAME, groupName, msg),
+        safeGetText("helpeply", global.config.BOTNAME, groupName, msg),
         event.threadID,
         (err, info) => {
           global.client.handleReply.push({
@@ -150,11 +171,11 @@ module.exports.handleReply = async function({ api, event, handleReply, getText }
       const cmds = handleReply.cmds;
       if (!cmds[idx]) return;
       const cmd = cmds[idx];
-      const permText = cmd.config.hasPermssion === 0 ? getText('user')
-        : cmd.config.hasPermssion === 1 ? getText('adminGroup')
-        : getText('adminBot');
+      const permText = cmd.config.hasPermssion === 0 ? safeGetText('user')
+        : cmd.config.hasPermssion === 1 ? safeGetText('adminGroup')
+        : safeGetText('adminBot');
       return api.sendMessage(
-        getText('moduleInfo',
+        safeGetText('moduleInfo',
           cmd.config.name,
           cmd.config.description,
           `${global.config.PREFIX || "/"}${cmd.config.name} ${cmd.config.usages ? cmd.config.usages : ""}`,
