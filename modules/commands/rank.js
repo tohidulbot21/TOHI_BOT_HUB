@@ -26,7 +26,8 @@ module.exports.run = async function({ api, event, args, Users, Currencies }) {
     if (mention || event.type === "message_reply") {
       // Show specific user's rank
       const userData = await Currencies.getData(targetID);
-      const userName = (await Users.getData(targetID)).name;
+      const userDataInfo = await Users.getData(targetID);
+      let userName = userDataInfo.name;
       const userExp = userData.exp || 0;
       const userLevel = Math.floor((Math.sqrt(1 + (4 * userExp / 3) + 1) / 2));
 
@@ -45,9 +46,16 @@ module.exports.run = async function({ api, event, args, Users, Currencies }) {
           const userData = await Users.getData(uid);
           if (!userData || !userData.name) continue;
 
-          const name = userData.name;
+          let name = userData.name;
           const exp = data.exp || 0;
           const level = Math.floor((Math.sqrt(1 + (4 * exp / 3) + 1) / 2));
+          
+          // Check for duplicate names and add UID suffix if needed
+          const existingWithSameName = userRankings.filter(user => user.name === name);
+          if (existingWithSameName.length > 0) {
+            name = `${name} (${uid.slice(-4)})`;
+          }
+          
           userRankings.push({ uid, name, exp, level });
         } catch (err) {
           continue;
@@ -91,11 +99,17 @@ module.exports.run = async function({ api, event, args, Users, Currencies }) {
         const userData = await Users.getData(uid);
         if (!userData || !userData.name) continue;
 
-        const name = userData.name;
+        let name = userData.name;
         const exp = data.exp || 0;
         const level = Math.floor((Math.sqrt(1 + (4 * exp / 3) + 1) / 2));
 
         if (exp > 0) { // Only include users with experience
+          // Check for duplicate names and add UID suffix if needed
+          const existingWithSameName = userRankings.filter(user => user.name === name);
+          if (existingWithSameName.length > 0) {
+            name = `${name} (${uid.slice(-4)})`;
+          }
+          
           userRankings.push({ uid, name, exp, level });
         }
       } catch (err) {
