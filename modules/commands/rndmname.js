@@ -21,10 +21,10 @@ module.exports = {
     }
   },
 
-  run: async function ({ nayan, events, args, lang }) {
+  run: async function ({ api, event, args }) {
     const axios = require("axios");
     const nameParam = args.join(" ");
-    if (!args[0]) return nayan.reply(lang("missing"), events.threadID, events.messageID);
+    if (!args[0]) return api.sendMessage(`[ ! ] Input Name.\nEx: ${global.config.PREFIX}rndm nayan`, event.threadID, event.messageID);
 
     try {
       const apis = await axios.get('https://raw.githubusercontent.com/MOHAMMAD-NAYAN-07/Nayan/main/api.json');
@@ -33,7 +33,7 @@ module.exports = {
 
       // Check if response has the expected structure
       if (!res.data || !res.data.data) {
-        return nayan.reply("❌ No video data found. Please try again later.", events.threadID, events.messageID);
+        return api.sendMessage("❌ No video data found. Please try again later.", event.threadID, event.messageID);
       }
 
       const videoUrl = res.data.data.url;
@@ -42,7 +42,7 @@ module.exports = {
       const ln = res.data.data.length || "0";
 
       if (!videoUrl) {
-        return nayan.reply("❌ Video URL not found. Please try again later.", events.threadID, events.messageID);
+        return api.sendMessage("❌ Video URL not found. Please try again later.", event.threadID, event.messageID);
       }
 
       const filePath = __dirname + "/cache/video.mp4";
@@ -51,19 +51,19 @@ module.exports = {
       request(videoUrl)
         .pipe(file)
         .on("close", () => {
-          return nayan.reply({
+          return api.sendMessage({
             body: `${cp}\n\n𝐓𝐨𝐭𝐚𝐥 𝐕𝐢𝐝𝐞𝐨𝐬: [${ln}]\n𝐀𝐝𝐝𝐞𝐝 𝐓𝐡𝐢𝐬 𝐕𝐢𝐝𝐞𝐨 𝐓𝐨 𝐓𝐡𝐞 𝐀𝐩𝐢 𝐁𝐲 [${name}]`,
             attachment: fs.createReadStream(filePath)
-          }, events.threadID, events.messageID);
+          }, event.threadID, event.messageID);
         })
         .on("error", (error) => {
           console.error("Download error:", error);
-          return nayan.reply("❌ Failed to download video. Please try again later.", events.threadID, events.messageID);
+          return api.sendMessage("❌ Failed to download video. Please try again later.", event.threadID, event.messageID);
         });
 
     } catch (err) {
       console.error(err);
-      return nayan.reply("Something went wrong. Please try again later.", events.threadID, events.messageID);
+      return api.sendMessage("Something went wrong. Please try again later.", event.threadID, event.messageID);
     }
   }
 };
