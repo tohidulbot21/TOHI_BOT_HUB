@@ -53,7 +53,14 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
   // Command execution without timeout
   async function executeCommand(command, Obj, commandName) {
     try {
-      return await command.run(Obj);
+      // Support both run and onStart functions
+      if (typeof command.run === 'function') {
+        return await command.run(Obj);
+      } else if (typeof command.onStart === 'function') {
+        return await command.onStart(Obj);
+      } else {
+        throw new Error(`Command ${commandName} has no valid run or onStart function`);
+      }
     } catch (error) {
       throw error;
     }
@@ -138,8 +145,20 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
 
       if (!commandName) return;
 
-      // Get command
-      const command = commands.get(commandName);
+      // Get command (check both name and aliases)
+      let command = commands.get(commandName);
+      if (!command) {
+        // Check aliases
+        for (const [name, cmd] of commands) {
+          if (cmd.config.aliases && Array.isArray(cmd.config.aliases)) {
+            if (cmd.config.aliases.includes(commandName)) {
+              command = cmd;
+              break;
+            }
+          }
+        }
+      }
+      
       if (!command) return;
 
       const commandConfig = command.config;
