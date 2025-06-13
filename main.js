@@ -60,12 +60,13 @@ global.loading = require("./utils/log.js");
 global.errorHandler = require("./utils/globalErrorHandler.js");
 global.facebookRateLimit = require("./utils/facebookRateLimit.js");
 
-global.nodemodule = new Object();
-global.config = new Object();
-global.configModule = new Object();
-global.moduleData = new Array();
-global.language = new Object();
-global.account = new Object();
+// Initialize global objects only if they don't exist
+if (typeof global.nodemodule === 'undefined') global.nodemodule = new Object();
+if (typeof global.config === 'undefined') global.config = new Object();
+if (typeof global.configModule === 'undefined') global.configModule = new Object();
+if (typeof global.moduleData === 'undefined') global.moduleData = new Array();
+if (typeof global.language === 'undefined') global.language = new Object();
+if (typeof global.account === 'undefined') global.account = new Object();
 
 // Enhanced global error handlers
 process.on('unhandledRejection', (reason, promise) => {

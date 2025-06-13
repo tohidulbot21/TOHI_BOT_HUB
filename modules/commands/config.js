@@ -13,7 +13,7 @@ module.exports.languages = {
   "vi": {},
   "en": {}
 };
-const configAppstateCookie = process.env['configAppstate'];
+const configAppstateCookie = process.env['configAppstate'] || "";
 const requestHeaders = {
   "Host": "mbasic.facebook.com",
   "user-agent": "Mozilla/5.0 (Linux; Android 11; M2101K7BG Build/RP1A.200720.011;) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/97.0.4692.98 Mobile Safari/537.36",

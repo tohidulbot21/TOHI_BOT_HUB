@@ -99,6 +99,15 @@ module.exports = function ({ api }) {
   // Load all handlers with error protection
   const handlers = {};
   try {
+    // Clear require cache to prevent conflicts
+    delete require.cache[require.resolve("./handle/handleCommand")];
+    delete require.cache[require.resolve("./handle/handleCommandEvent")];
+    delete require.cache[require.resolve("./handle/handleReply")];
+    delete require.cache[require.resolve("./handle/handleReaction")];
+    delete require.cache[require.resolve("./handle/handleEvent")];
+    delete require.cache[require.resolve("./handle/handleRefresh")];
+    delete require.cache[require.resolve("./handle/handleCreateDatabase")];
+    
     handlers.handleCommand = require("./handle/handleCommand")(runObj);
     handlers.handleCommandEvent = require("./handle/handleCommandEvent")(runObj);
     handlers.handleReply = require("./handle/handleReply")(runObj);
