@@ -48,14 +48,39 @@ module.exports = {
       "https://i.imgur.com/QGrvMZL.jpg"
     ];
 
+    // Send message immediately to acknowledge command
+    const messageBody = '✨ Here comes the Magician! 🐐 Neymar Jr ✨';
+    
     try {
       const img = links[Math.floor(Math.random() * links.length)];
       const axios = require('axios');
       const fs = require('fs');
       const path = require('path');
       
-      // Download image
-      const response = await axios.get(img, { responseType: 'stream' });
+      // Enhanced axios request with proper error handling
+      const response = await axios.get(img, { 
+        responseType: 'stream',
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        validateStatus: function (status) {
+          return status < 500; // Resolve only if the status code is less than 500
+        }
+      });
+
+      // Check if response is rate limited
+      if (response.status === 429) {
+        console.log('Rate limited by Imgur, sending text message only');
+        return api.sendMessage(messageBody, threadID, messageID);
+      }
+
+      // Check if response is successful
+      if (response.status !== 200) {
+        console.log(`Failed to fetch image: ${response.status}`);
+        return api.sendMessage(messageBody, threadID, messageID);
+      }
+      
       const imagePath = path.join(__dirname, 'tmp', `neymar_${Date.now()}.jpg`);
       
       // Ensure tmp directory exists
@@ -68,23 +93,41 @@ module.exports = {
       response.data.pipe(writer);
       
       writer.on('finish', () => {
-        api.sendMessage({
-          body: '✨ Here comes the Magician! 🐐 Neymar Jr ✨',
-          attachment: fs.createReadStream(imagePath)
-        }, threadID, () => {
-          // Clean up the file after sending
-          fs.unlinkSync(imagePath);
-        }, messageID);
+        // Check if file was created successfully
+        if (fs.existsSync(imagePath)) {
+          api.sendMessage({
+            body: messageBody,
+            attachment: fs.createReadStream(imagePath)
+          }, threadID, () => {
+            // Clean up the file after sending
+            try {
+              fs.unlinkSync(imagePath);
+            } catch (e) {
+              console.log('Error cleaning up file:', e.message);
+            }
+          }, messageID);
+        } else {
+          api.sendMessage(messageBody, threadID, messageID);
+        }
       });
       
       writer.on('error', (error) => {
-        console.log('Error downloading Neymar image:', error);
-        api.sendMessage('✨ Here comes the Magician! 🐐 Neymar Jr ✨', threadID, messageID);
+        console.log('Error writing Neymar image:', error.message);
+        api.sendMessage(messageBody, threadID, messageID);
       });
       
     } catch (error) {
-      console.log('Neymar command error:', error);
-      api.sendMessage('✨ Here comes the Magician! 🐐 Neymar Jr ✨', threadID, messageID);
+      // Handle specific error types
+      if (error.response && error.response.status === 429) {
+        console.log('Imgur rate limit reached, sending text only');
+      } else if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+        console.log('Network timeout, sending text only');
+      } else {
+        console.log('Neymar command error:', error.message);
+      }
+      
+      // Always send the text message as fallback
+      api.sendMessage(messageBody, threadID, messageID);
     }
   }
 };
