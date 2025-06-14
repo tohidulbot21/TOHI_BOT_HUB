@@ -39,14 +39,14 @@ module.exports = {
       }
 
       if (isNaN(id)) { // If input is not a number
-        await message.reply("processing your cover senpai....😻");
+        await api.sendMessage("processing your cover senpai....😻", event.threadID, event.messageID);
 
         let id1;
         try {
           const response = await axios.get(`https://www.nguyenmanh.name.vn/api/searchAvt?key=${encodeURIComponent(id)}`, {
             timeout: 10000
           });
-          
+
           if (response.data && response.data.result && response.data.result.ID) {
             id1 = response.data.result.ID;
           } else {
@@ -60,13 +60,13 @@ module.exports = {
 
         try {
           const img = `https://www.nguyenmanh.name.vn/api/avtWibu6?id=${id1}&tenchinh=${encodeURIComponent(name)}&tenphu=${encodeURIComponent(juswa)}&mxh=${encodeURIComponent(bgtext)}&apikey=az4d4hVW`;
-          
+
           const form = {
             body: `「 Here's your cover senpai😻❤️ 」`
           };
-          
+
           form.attachment = [];
-          
+
           if (global.utils && global.utils.getStreamFromURL) {
             form.attachment[0] = await global.utils.getStreamFromURL(img);
           } else {
@@ -74,7 +74,7 @@ module.exports = {
             const response = await axios.get(img, { responseType: 'stream', timeout: 15000 });
             form.attachment[0] = response.data;
           }
-          
+
           message.reply(form);
         } catch (error) {
           console.log(`Cover2 image generation error: ${error.message}`);
@@ -84,17 +84,17 @@ module.exports = {
 
 
        } else { 
-        await message.reply("processing your cover senpai....😻");
+        await api.sendMessage("processing your cover senpai....😻", event.threadID, event.messageID);
 
         try {
           const img = `https://www.nguyenmanh.name.vn/api/avtWibu6?id=${encodeURIComponent(id)}&tenchinh=${encodeURIComponent(name)}&tenphu=${encodeURIComponent(juswa)}&mxh=${encodeURIComponent(bgtext)}&apikey=az4d4hVW`;
-          
+
           const form = {
             body: `「 Here's your cover senpai😻❤️ 」`
           };
-          
+
           form.attachment = [];
-          
+
           if (global.utils && global.utils.getStreamFromURL) {
             form.attachment[0] = await global.utils.getStreamFromURL(img);
           } else {
@@ -102,7 +102,7 @@ module.exports = {
             const response = await axios.get(img, { responseType: 'stream', timeout: 15000 });
             form.attachment[0] = response.data;
           }
-          
+
           message.reply(form);
         } catch (error) {
           console.log(`Cover2 image generation error: ${error.message}`);
