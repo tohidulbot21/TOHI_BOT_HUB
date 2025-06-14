@@ -1,119 +1,50 @@
-const axios = require('axios');
-
-module.exports = {
-  config: {
-    name: "4k",
-    usePrefix: true,
-    aliases: ["4k", "remini", "upscale"],
-    version: "2.0",
-    author: "JARiF",
-    countDown: 15,
-    role: 0,
-    longDescription: "Upscale your image using multiple API endpoints.",
-    category: "image",
-    commandCategory: "image edit",
-    guide: {
-      en: "{pn} reply to an image"
-    }
-  },
-
-  onStart: async function ({ message, args, event, api }) {
-    const { threadID, messageID } = event;
-
-    const getImageUrl = () => {
-      if (event.type === "message_reply") {
-        const replyAttachment = event.messageReply.attachments[0];
-        if (["photo", "sticker"].includes(replyAttachment?.type)) {
-          return replyAttachment.url;
-        } else {
-          throw new Error("┐⁠(⁠￣⁠ヘ⁠￣⁠)⁠┌ | Must reply to an image.");
-        }
-      } else if (args[0]?.match(/(https?:\/\/.*\.(?:png|jpg|jpeg))/g)) {
-        return args[0];
-      } else {
-        throw new Error("(⁠┌⁠・⁠。⁠・⁠)⁠┌ | Reply to an image.");
-      }
-    };
-
-    // Alternative API endpoints
-    const apiEndpoints = [
-      {
-        name: "Remini API",
-        url: (imageUrl) => `https://api.popcat.xyz/remini?image=${encodeURIComponent(imageUrl)}`,
-        processResponse: (response) => response.data.image || response.data.url
-      },
-      {
-        name: "Upscale API",
-        url: (imageUrl) => `https://api.alexflipnote.dev/enhance?image=${encodeURIComponent(imageUrl)}`,
-        processResponse: (response) => response.data.url
-      }
-    ];
-
-    try {
-      const imageUrl = getImageUrl();
-
-      const processingMsg = await api.sendMessage("ƪ⁠(⁠‾⁠.⁠‾⁠“⁠)⁠┐ | Processing image enhancement...", threadID);
-
-      let enhancedImageUrl = null;
-      let usedApi = null;
-
-      // Try each API endpoint
-      for (const endpoint of apiEndpoints) {
-        try {
-          console.log(`Trying ${endpoint.name}...`);
-          const response = await axios.get(endpoint.url(imageUrl), {
-            timeout: 30000,
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-          });
-
-          enhancedImageUrl = endpoint.processResponse(response);
-          usedApi = endpoint.name;
-          break;
-        } catch (apiError) {
-          console.log(`${endpoint.name} failed:`, apiError.message);
-          continue;
-        }
-      }
-
-      // Remove processing message
-      await api.unsendMessage(processingMsg.messageID);
-
-      if (!enhancedImageUrl) {
-        return api.sendMessage(
-          "┐⁠(⁠￣⁠ヘ⁠￣⁠)⁠┌ | All enhancement services are currently unavailable. Please try again later.",
-          threadID, messageID
-        );
-      }
-
-      // Download and send the enhanced image
-      const imageResponse = await axios.get(enhancedImageUrl, {
-        responseType: 'stream',
-        timeout: 30000
-      });
-
-      return api.sendMessage({
-        body: `<⁠(⁠￣⁠︶⁠￣⁠)⁠> | Image enhanced successfully using ${usedApi}!`,
-        attachment: imageResponse.data
-      }, threadID, messageID);
-
-    } catch (error) {
-      console.log("4K command error:", error.message);
-
-      let errorMessage = "┐⁠(⁠￣⁠ヘ⁠￣⁠)⁠┌ | ";
-
-      if (error.message.includes("Must reply to an image")) {
-        errorMessage += "Please reply to an image to enhance it.";
-      } else if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT') {
-        errorMessage += "Network connection failed. Please try again later.";
-      } else if (error.response?.status === 429) {
-        errorMessage += "Service is rate limited. Please wait a moment and try again.";
-      } else {
-        errorMessage += "Unable to enhance image. Please try again later.";
-      }
-
-      return api.sendMessage(errorMessage, threadID, messageID);
-    }
+const axios = require("axios");
+const fs = require("fs-extra");
+module.exports.config = {
+  'name': '4k',
+  'version': "1.0.0",
+  'hasPermssion': 0x0,
+  'credits': "nazrul",
+  usePrefix: true,
+  'premium': false,
+  'description': "Enhance Photo",
+  'commandCategory': "without prefix",
+  'usages': "reply image",
+  'cooldowns': 0x5,
+  'dependencies': {
+    'path': '',
+    'fs-extra': ''
+  }
+};
+module.exports.run = async function ({
+  api: _0x35648a,
+  event: _0xadd78e,
+  args: _0x1da3bd
+}) {
+  const _0x979f8 = __dirname + "/cache/remove_bg.jpg";
+  const {
+    threadID: _0x505ee2,
+    messageID: _0x4c4974
+  } = _0xadd78e;
+  const _0x37a8cc = _0xadd78e.messageReply ? _0xadd78e.messageReply.attachments[0].url : _0x1da3bd.join(" ");
+  if (!_0x37a8cc) {
+    _0x35648a.sendMessage("Please reply to a photo ", _0x505ee2, _0x4c4974);
+    return;
+  }
+  try {
+    const _0x2a6e15 = await _0x35648a.sendMessage("𝐏𝐥𝐞𝐚𝐬𝐞 𝐖𝐚𝐢𝐭 𝐁𝐚𝐛𝐲...😘", _0xadd78e.threadID);
+    const _0x3a6b64 = await axios.get("https://yt-video-production.up.railway.app/upscale?imageUrl=" + encodeURIComponent(_0x37a8cc));
+    const _0x2bfc9c = _0x3a6b64.data.imageUrl;
+    const _0x4ba5e0 = (await axios.get(_0x2bfc9c, {
+      'responseType': "arraybuffer"
+    })).data;
+    fs.writeFileSync(_0x979f8, Buffer.from(_0x4ba5e0, "binary"));
+    _0x35648a.sendMessage({
+      'body': "𝐈𝐦𝐚𝐠𝐞 𝐆𝐞𝐧𝐞𝐫𝐚𝐭𝐞𝐝 𝐒𝐮𝐜𝐜𝐞𝐟𝐮𝐥",
+      'attachment': fs.createReadStream(_0x979f8)
+    }, _0x505ee2, () => fs.unlinkSync(_0x979f8), _0x4c4974);
+    _0x35648a.unsendMessage(_0x2a6e15.messsageID);
+  } catch (_0x5def0b) {
+    _0x35648a.sendMessage("Error processing image: " + _0x5def0b.message, _0x505ee2, _0x4c4974);
   }
 };

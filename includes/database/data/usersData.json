@@ -2,7 +2,7 @@
     "100092006324917": {
         "userID": "100092006324917",
         "money": 1e+96,
-        "exp": 1462,
+        "exp": 1464,
         "createTime": {
             "timestamp": 1748273172692
         },
@@ -102,7 +102,7 @@
             "lastUpdate": 1748273172692,
             "workTime": 1749800037975
         },
-        "lastUpdate": 1749878044910,
+        "lastUpdate": 1749879130926,
         "name": "MD Tohidul Islam",
         "lastDaily": 1749800679916
     },
