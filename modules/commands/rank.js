@@ -40,6 +40,7 @@ module.exports.run = async function({ api, event, args, Users, Currencies }) {
         return api.sendMessage("❌ No user data found to calculate rankings!", threadID, messageID);
       }
 
+      const seenNames = new Set();
       for (const uid of allUsers) {
         try {
           const data = await Currencies.getData(uid);
@@ -49,13 +50,13 @@ module.exports.run = async function({ api, event, args, Users, Currencies }) {
           let name = userData.name;
           const exp = data.exp || 0;
           const level = Math.floor((Math.sqrt(1 + (4 * exp / 3) + 1) / 2));
-          
+
           // Check for duplicate names and add UID suffix if needed
-          const existingWithSameName = userRankings.filter(user => user.name === name);
-          if (existingWithSameName.length > 0) {
+          if (seenNames.has(name)) {
             name = `${name} (${uid.slice(-4)})`;
           }
-          
+          seenNames.add(userData.name);
+
           userRankings.push({ uid, name, exp, level });
         } catch (err) {
           continue;
@@ -93,6 +94,7 @@ module.exports.run = async function({ api, event, args, Users, Currencies }) {
       return api.sendMessage("❌ No user data found to calculate rankings!", threadID, messageID);
     }
 
+    const seenNames = new Set();
     for (const uid of allUsers) {
       try {
         const data = await Currencies.getData(uid);
@@ -105,11 +107,11 @@ module.exports.run = async function({ api, event, args, Users, Currencies }) {
 
         if (exp > 0) { // Only include users with experience
           // Check for duplicate names and add UID suffix if needed
-          const existingWithSameName = userRankings.filter(user => user.name === name);
-          if (existingWithSameName.length > 0) {
+          if (seenNames.has(name)) {
             name = `${name} (${uid.slice(-4)})`;
           }
-          
+          seenNames.add(userData.name);
+
           userRankings.push({ uid, name, exp, level });
         }
       } catch (err) {
