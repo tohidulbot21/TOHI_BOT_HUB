@@ -21,52 +21,94 @@ module.exports = {
 
 
   onStart: async function ({ message, args, event, api }) {
-
     const info = args.join(" ");
     if (!info){
-      return message.reply(`Please enter in the format:\n/avatar  Name or code | text | Text`);
-
-      }else {
+      return message.reply(`Please enter in the format:\n/cover2  Name or code | text | Text | bgtext`);
+    } else {
       const msg = info.split("|");
-      const id = msg[0];
-    const name = msg[1];
-    const juswa = msg[2];
-       const bgtext = msg[3];
+      const id = msg[0] ? msg[0].trim() : "";
+      const name = msg[1] ? msg[1].trim() : "";
+      const juswa = msg[2] ? msg[2].trim() : "";
+      const bgtext = msg[3] ? msg[3].trim() : "";
 
 
 
-       if (isNaN(id)) { // If input is not a number
-          await message.reply("processing your cover senpai....😻");
+       // Validate required fields
+      if (!id || !name) {
+        return message.reply("❌ Please provide at least ID/Name and main text!\nFormat: /cover2 id|name|subtext|bgtext");
+      }
 
-         let id1;
-    try {
-        id1 = (await axios.get(`https://www.nguyenmanh.name.vn/api/searchAvt?key=${id}`)).data.result.ID; 
-    } catch (error) {
-      await message.reply("Character not found, please check the name and try again...");
-      return;
-    }
+      if (isNaN(id)) { // If input is not a number
+        await message.reply("processing your cover senpai....😻");
 
-        const img = (`https://www.nguyenmanh.name.vn/api/avtWibu6?id=${id1}&tenchinh=${name}&tenphu=${juswa}&mxh=${bgtext}&apikey=az4d4hVW`)			
-                 const form = {
-        body: `「 Here's cover senpai😻❤️ 」`
-      };
-        form.attachment = []
-        form.attachment[0] = await global.utils.getStreamFromURL(img);
-      message.reply(form); 
-
-
-
-       }else  { 
-       await message.reply("processing your cover senpai....😻");
-
-         const img = (`https://www.nguyenmanh.name.vn/api/avtWibu6?id=${id}&tenchinh=${name}&tenphu=${juswa}&mxh=${bgtext}&apikey=az4d4hVW`)			
-                 const form = {
-        body: `「 Here's cover senpai😻❤️ 」`
-      };
-        form.attachment = []
-        form.attachment[0] = await global.utils.getStreamFromURL(img);
-      message.reply(form); 
+        let id1;
+        try {
+          const response = await axios.get(`https://www.nguyenmanh.name.vn/api/searchAvt?key=${encodeURIComponent(id)}`, {
+            timeout: 10000
+          });
+          
+          if (response.data && response.data.result && response.data.result.ID) {
+            id1 = response.data.result.ID;
+          } else {
+            throw new Error("Invalid response format");
+          }
+        } catch (error) {
+          console.log(`Cover2 API error: ${error.message}`);
+          await message.reply("Character not found, please check the name and try again...");
+          return;
         }
+
+        try {
+          const img = `https://www.nguyenmanh.name.vn/api/avtWibu6?id=${id1}&tenchinh=${encodeURIComponent(name)}&tenphu=${encodeURIComponent(juswa)}&mxh=${encodeURIComponent(bgtext)}&apikey=az4d4hVW`;
+          
+          const form = {
+            body: `「 Here's your cover senpai😻❤️ 」`
+          };
+          
+          form.attachment = [];
+          
+          if (global.utils && global.utils.getStreamFromURL) {
+            form.attachment[0] = await global.utils.getStreamFromURL(img);
+          } else {
+            // Fallback method
+            const response = await axios.get(img, { responseType: 'stream', timeout: 15000 });
+            form.attachment[0] = response.data;
+          }
+          
+          message.reply(form);
+        } catch (error) {
+          console.log(`Cover2 image generation error: ${error.message}`);
+          await message.reply("❌ Failed to generate cover image. Please try again later.");
+        } 
+
+
+
+       } else { 
+        await message.reply("processing your cover senpai....😻");
+
+        try {
+          const img = `https://www.nguyenmanh.name.vn/api/avtWibu6?id=${encodeURIComponent(id)}&tenchinh=${encodeURIComponent(name)}&tenphu=${encodeURIComponent(juswa)}&mxh=${encodeURIComponent(bgtext)}&apikey=az4d4hVW`;
+          
+          const form = {
+            body: `「 Here's your cover senpai😻❤️ 」`
+          };
+          
+          form.attachment = [];
+          
+          if (global.utils && global.utils.getStreamFromURL) {
+            form.attachment[0] = await global.utils.getStreamFromURL(img);
+          } else {
+            // Fallback method
+            const response = await axios.get(img, { responseType: 'stream', timeout: 15000 });
+            form.attachment[0] = response.data;
+          }
+          
+          message.reply(form);
+        } catch (error) {
+          console.log(`Cover2 image generation error: ${error.message}`);
+          await message.reply("❌ Failed to generate cover image. Please try again later.");
+        }
+      }
       }
     }
    };
