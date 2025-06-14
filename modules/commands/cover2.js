@@ -23,7 +23,7 @@ module.exports = {
   onStart: async function ({ message, args, event, api }) {
     const info = args.join(" ");
     if (!info){
-      return message.reply(`Please enter in the format:\n/cover2  Name or code | text | Text | bgtext`);
+      return api.sendMessage(`Please enter in the format:\n/cover2  Name or code | text | Text | bgtext`, event.threadID, event.messageID);
     } else {
       const msg = info.split("|");
       const id = msg[0] ? msg[0].trim() : "";
@@ -35,7 +35,7 @@ module.exports = {
 
        // Validate required fields
       if (!id || !name) {
-        return message.reply("❌ Please provide at least ID/Name and main text!\nFormat: /cover2 id|name|subtext|bgtext");
+        return api.sendMessage("❌ Please provide at least ID/Name and main text!\nFormat: /cover2 id|name|subtext|bgtext", event.threadID, event.messageID);
       }
 
       if (isNaN(id)) { // If input is not a number
@@ -54,7 +54,7 @@ module.exports = {
           }
         } catch (error) {
           console.log(`Cover2 API error: ${error.message}`);
-          await message.reply("Character not found, please check the name and try again...");
+          await api.sendMessage("Character not found, please check the name and try again...", event.threadID, event.messageID);
           return;
         }
 

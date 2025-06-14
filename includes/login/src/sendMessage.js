@@ -338,9 +338,15 @@ module.exports = function (defaultFuncs, api, ctx) {
 				}
 
 				files.forEach(function (file) {
-					const key = Object.keys(file);
-					const type = key[0]; // image_id, file_id, etc
-					form["" + type + "s"].push(file[type]); // push the id
+					if (file && typeof file === 'object') {
+						const key = Object.keys(file);
+						if (key && key.length > 0) {
+							const type = key[0]; // image_id, file_id, etc
+							if (form["" + type + "s"]) {
+								form["" + type + "s"].push(file[type]); // push the id
+							}
+						}
+					}
 				});
 				cb();
 			});
