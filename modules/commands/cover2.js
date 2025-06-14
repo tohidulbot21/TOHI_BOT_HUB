@@ -75,10 +75,10 @@ module.exports = {
             form.attachment[0] = response.data;
           }
 
-          message.reply(form);
+          api.sendMessage(form, event.threadID, event.messageID);
         } catch (error) {
           console.log(`Cover2 image generation error: ${error.message}`);
-          await message.reply("❌ Failed to generate cover image. Please try again later.");
+          await api.sendMessage("❌ Failed to generate cover image. Please try again later.", event.threadID, event.messageID);
         } 
 
 
@@ -103,10 +103,10 @@ module.exports = {
             form.attachment[0] = response.data;
           }
 
-          message.reply(form);
+          api.sendMessage(form, event.threadID, event.messageID);
         } catch (error) {
           console.log(`Cover2 image generation error: ${error.message}`);
-          await message.reply("❌ Failed to generate cover image. Please try again later.");
+          await api.sendMessage("❌ Failed to generate cover image. Please try again later.", event.threadID, event.messageID);
         }
       }
       }
