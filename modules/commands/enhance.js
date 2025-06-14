@@ -1,18 +1,17 @@
 
-const picsartfordevelopers = require('@api/picsartfordevelopers');
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
 
 module.exports = {
   config: {
     name: "enhance",
-    version: "1.0.0",
+    version: "2.0.0",
     author: "TOHI-BOT-HUB",
     countDown: 10,
     role: 0,
     usePrefix: true,
-    shortDescription: "🚀 Ultra enhance your images with AI",
+    shortDescription: "🚀 Ultra enhance your images with PicsArt API",
     longDescription: "Enhance image quality using PicsArt Ultra Enhance API",
     category: "image",
     commandCategory: "image",
@@ -34,9 +33,6 @@ module.exports = {
           event.threadID, event.messageID
         );
       }
-
-      // Configure PicsArt SDK
-      picsartfordevelopers.auth(apiKey);
 
       let imageUrl = "";
       let upscaleFactor = parseInt(args[0]) || 2;
@@ -73,21 +69,42 @@ module.exports = {
       const processingMsg = await api.sendMessage(
         `🚀 **Ultra Enhancing Image...**\n\n` +
         `• Upscale Factor: ${upscaleFactor}x\n` +
-        `• Processing with AI technology\n` +
+        `• Processing with PicsArt AI\n` +
         `• Please wait...`,
         event.threadID
       );
 
       try {
-        // Call PicsArt Ultra Enhance API
-        const response = await picsartfordevelopers.imageUltraEnhance({
-          image: imageUrl,
-          upscale_factor: upscaleFactor.toString(),
-          format: 'JPG'
+        // Direct API call to PicsArt Ultra Enhance
+        const formData = new FormData();
+        
+        // Download image first
+        const imageResponse = await axios.get(imageUrl, { 
+          responseType: 'arraybuffer',
+          timeout: 30000 
         });
+        
+        const imageBuffer = Buffer.from(imageResponse.data);
+        const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
+        
+        formData.append('image', blob, 'image.jpg');
+        formData.append('upscale_factor', upscaleFactor.toString());
+        formData.append('format', 'JPG');
 
-        if (response.data?.data?.url) {
-          const enhancedImageUrl = response.data.data.url;
+        const enhanceResponse = await axios.post(
+          'https://api.picsart.io/tools/1.0/upscale/enhance',
+          formData,
+          {
+            headers: {
+              'X-Picsart-API-Key': apiKey,
+              'Content-Type': 'multipart/form-data'
+            },
+            timeout: 60000
+          }
+        );
+
+        if (enhanceResponse.data?.data?.url) {
+          const enhancedImageUrl = enhanceResponse.data.data.url;
           
           // Download enhanced image
           const cacheDir = path.join(__dirname, "cache");
@@ -97,13 +114,13 @@ module.exports = {
           
           const imagePath = path.join(cacheDir, `enhanced_${Date.now()}.jpg`);
           
-          const imageResponse = await axios.get(enhancedImageUrl, {
+          const finalImageResponse = await axios.get(enhancedImageUrl, {
             responseType: 'stream',
             timeout: 30000
           });
 
           const writeStream = fs.createWriteStream(imagePath);
-          imageResponse.data.pipe(writeStream);
+          finalImageResponse.data.pipe(writeStream);
 
           await new Promise((resolve, reject) => {
             writeStream.on('finish', resolve);
@@ -121,7 +138,7 @@ module.exports = {
 
 ✨ **Enhancement Details:**
 • Upscale Factor: ${upscaleFactor}x
-• Technology: AI Ultra Enhance
+• Technology: PicsArt Ultra Enhance
 • Quality: Professional Grade
 
 🎯 **Powered by PicsArt API**
@@ -145,16 +162,41 @@ module.exports = {
 
       } catch (apiError) {
         await api.unsendMessage(processingMsg.messageID);
-        console.error('[ENHANCE] API Error:', apiError);
+        console.error('[ENHANCE] API Error:', apiError.response?.data || apiError.message);
         
-        return api.sendMessage(
-          "❌ **Enhancement Failed**\n\n" +
-          "• API processing error occurred\n" +
-          "• Please try with a different image\n" +
-          "• Make sure your API key is valid\n\n" +
-          `🔧 **Error:** ${apiError.message}`,
-          event.threadID, event.messageID
-        );
+        // Check for specific error types
+        if (apiError.response?.status === 401) {
+          return api.sendMessage(
+            "❌ **Authentication Failed**\n\n" +
+            "• Invalid API key\n" +
+            "• Please check your PICSART_API_KEY in Secrets\n" +
+            "• Get a valid API key from: https://picsart.io/developers/",
+            event.threadID, event.messageID
+          );
+        } else if (apiError.response?.status === 402) {
+          return api.sendMessage(
+            "❌ **Credits Exhausted**\n\n" +
+            "• Your PicsArt API credits are finished\n" +
+            "• Please top up your credits at: https://picsart.io/developers/",
+            event.threadID, event.messageID
+          );
+        } else if (apiError.response?.status === 429) {
+          return api.sendMessage(
+            "❌ **Rate Limit Exceeded**\n\n" +
+            "• Too many requests\n" +
+            "• Please wait a few minutes and try again",
+            event.threadID, event.messageID
+          );
+        } else {
+          return api.sendMessage(
+            "❌ **Enhancement Failed**\n\n" +
+            "• API processing error occurred\n" +
+            "• Please try with a different image\n" +
+            "• Make sure image is clear and not corrupted\n\n" +
+            `🔧 **Error:** ${apiError.message}`,
+            event.threadID, event.messageID
+          );
+        }
       }
 
     } catch (error) {
