@@ -12,6 +12,7 @@ module.exports = {
     role: 0,
     longDescription: "Upscale your image.",
     category: "image",
+    commandCategory: "image edit",
     guide: {
       en: "{pn} reply to an image"
     }
