@@ -10,18 +10,19 @@ module.exports.config = {
     cooldowns: 5
 };
 module.exports.run = async ({ api, event,args }) =>  {
-  const text1 = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[0] || "21";
-  const text2 = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[1] || "";
-  const text3 = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[2] || "";
-  const text4 = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[3] || "";
-  const color = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[4] || "";
-  
-    const { loadImage, createCanvas } = require("canvas");
-    const fs = require('fs')
-    const request = require('request');
-    const path = require('path');
-    const axios = require('axios');
-    const lengthchar = (await axios.get('https://run.mocky.io/v3/0dcc2ccb-b5bd-45e7-ab57-5dbf9db17864')).data
+  try {
+    const text1 = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[0] || "21";
+    const text2 = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[1] || "";
+    const text3 = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[2] || "";
+    const text4 = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[3] || "";
+    const color = args.join(" ").trim().replace(/\s+/g, " ").replace(/(\s+\|)/g, "|").replace(/\|\s+/g, "|").split("|")[4] || "";
+    
+      const { loadImage, createCanvas } = require("canvas");
+      const fs = require('fs')
+      const request = require('request');
+      const path = require('path');
+      const axios = require('axios');
+      const lengthchar = (await axios.get('https://run.mocky.io/v3/0dcc2ccb-b5bd-45e7-ab57-5dbf9db17864')).data
     const Canvas = require('canvas');
     let pathImg = __dirname + `/tad/avatar_1.png`;
     let pathAva = __dirname + `/tad/avatar_2.png`;
@@ -91,4 +92,8 @@ module.exports.run = async ({ api, event,args }) =>  {
     fs.unlinkSync(pathAva),
     event.messageID
   );
+  } catch (error) {
+    console.error("Banner command error:", error);
+    return api.sendMessage("❌ Banner service is currently unavailable. Please try again later.", event.threadID, event.messageID);
+  }
  }

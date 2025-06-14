@@ -11,17 +11,21 @@ module.exports.config = {
 };
 module.exports.run = async function({ api, args, event, permssion }) {
    const axios = require('axios');
-   const lengthchar = (await axios.get('https://run.mocky.io/v3/0dcc2ccb-b5bd-45e7-ab57-5dbf9db17864')).data
-  if(args[0] == "find" || args[0] == "tìm"){
-    const t = (await axios.get(`${lengthchar[args[1]].imgAnime}`, {
-        responseType: "stream"
-      })).data;
-    var msg = ({
-      body: `CHARACTER ID ${args[1]}, Default COLOR ${lengthchar[args[1]].colorBg}`,
-      attachment: t
-    })
-    return api.sendMessage(msg, event.threadID, event.messageID)
-  }
+   try {
+     const lengthchar = (await axios.get('https://run.mocky.io/v3/0dcc2ccb-b5bd-45e7-ab57-5dbf9db17864')).data
+     if(args[0] == "find" || args[0] == "tìm"){
+       const t = (await axios.get(`${lengthchar[args[1]].imgAnime}`, {
+           responseType: "stream"
+         })).data;
+       var msg = ({
+         body: `CHARACTER ID ${args[1]}, Default COLOR ${lengthchar[args[1]].colorBg}`,
+         attachment: t
+       })
+       return api.sendMessage(msg, event.threadID, event.messageID)
+     }
+   } catch (error) {
+     return api.sendMessage("❌ Banner service is currently unavailable. Please try again later.", event.threadID, event.messageID);
+   }
   else if(args[0] == "list"){
     const alime = (await axios.get('https://run.mocky.io/v3/0dcc2ccb-b5bd-45e7-ab57-5dbf9db17864')).data
     var count = alime.listAnime.length;

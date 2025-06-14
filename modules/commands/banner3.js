@@ -11,16 +11,20 @@ module.exports.config = {
 };
 module.exports.run = async function({ api, args, event, permssion }) {
   const axios = require('axios')
-  if(args[0] == "find" || args[0] == "tìm"){
-     const lengthchar = (await axios.get('https://run.mocky.io/v3/0dcc2ccb-b5bd-45e7-ab57-5dbf9db17864')).data
-    const t = (await axios.get(`${lengthchar[args[1]].imgAnime}`, {
-        responseType: "stream"
-      })).data;
-    const msg = ({
-    body: `char carries ordinal number ${args[1]}`,
-    attachment: t
-  })
-    return api.sendMessage(msg, event.threadID, event.messageID)
+  try {
+    if(args[0] == "find" || args[0] == "tìm"){
+       const lengthchar = (await axios.get('https://run.mocky.io/v3/0dcc2ccb-b5bd-45e7-ab57-5dbf9db17864')).data
+      const t = (await axios.get(`${lengthchar[args[1]].imgAnime}`, {
+          responseType: "stream"
+        })).data;
+      const msg = ({
+      body: `char carries ordinal number ${args[1]}`,
+      attachment: t
+    })
+      return api.sendMessage(msg, event.threadID, event.messageID)
+    }
+  } catch (error) {
+    return api.sendMessage("❌ Banner service is currently unavailable. Please try again later.", event.threadID, event.messageID);
   }
   if(!args[0]){
   const abcxyz = ["https://imgur.com/7AiLKO5.png","https://imgur.com/6we7T1g.png","https://imgur.com/W1TNnj9.png","https://imgur.com/qZAh20x.png"]
