@@ -19,34 +19,40 @@ module.exports = {
   },
 
   onStart: async function ({ message, args, event, api }) {
-    const getImageUrl = () => {
-      if (event.type === "message_reply") {
-        const replyAttachment = event.messageReply.attachments[0];
-        if (["photo", "sticker"].includes(replyAttachment?.type)) {
-          return replyAttachment.url;
-        } else {
-          throw new Error("┐⁠(⁠￣⁠ヘ⁠￣⁠)⁠┌ | Must reply to an image.");
-        }
-      } else if (args[0]?.match(/(https?:\/\/.*\.(?:png|jpg|jpeg))/g) || null) {
-        return args[0];
+    const { threadID, messageID } = event;
+
+  const getImageUrl = () => {
+    if (event.type === "message_reply") {
+      const replyAttachment = event.messageReply.attachments[0];
+      if (["photo", "sticker"].includes(replyAttachment?.type)) {
+        return replyAttachment.url;
       } else {
-        throw new Error("(⁠┌⁠・⁠。⁠・⁠)⁠┌ | Reply to an image.");
+        throw new Error("┐⁠(⁠￣⁠ヘ⁠￣⁠)⁠┌ | Must reply to an image.");
       }
-    };
-
-    try {
-      const imageUrl = await getImageUrl();
-      const shortUrl = await tinyurl.shorten(imageUrl);
-
-      message.reply("ƪ⁠(⁠‾⁠.⁠‾⁠“⁠)⁠┐ | Please wait...");
-
-      const response = await axios.get(`https://www.api.vyturex.com/upscale?imageUrl=${shortUrl}`);
-      const resultUrl = response.data.resultUrl;
-
-      message.reply({ body: "<⁠(⁠￣⁠︶⁠￣⁠)⁠> | Image Enhanced.", attachment: await global.utils.getStreamFromURL(resultUrl) });
-    } catch (error) {
-      message.reply("┐⁠(⁠￣⁠ヘ⁠￣⁠)⁠┌ | Error: " + error.message);
-      // Log error for debugging: console.error(error);
+    } else if (args[0]?.match(/(https?:\/\/.*\.(?:png|jpg|jpeg))/g)) {
+      return args[0];
+    } else {
+      throw new Error("(⁠┌⁠・⁠。⁠・⁠)⁠┌ | Reply to an image.");
     }
+  };
+
+  try {
+    const imageUrl = getImageUrl();
+    const shortUrl = await tinyurl.shorten(imageUrl);
+
+    api.sendMessage("ƪ⁠(⁠‾⁠.⁠‾⁠“⁠)⁠┐ | Please wait...", threadID, messageID);
+
+    const response = await axios.get(`https://www.api.vyturex.com/upscale?imageUrl=${shortUrl}`);
+    const resultUrl = response.data.resultUrl;
+
+    const stream = await global.utils.getStreamFromURL(resultUrl);
+    return api.sendMessage({ 
+      body: "<⁠(⁠￣⁠︶⁠￣⁠)⁠> | Image Enhanced.", 
+      attachment: stream 
+    }, threadID, messageID);
+  } catch (error) {
+    console.log("4K command error:", error.message);
+    return api.sendMessage("┐⁠(⁠￣⁠ヘ⁠￣⁠)⁠┌ | Error: " + error.message, threadID, messageID);
+  }
   }
 };
