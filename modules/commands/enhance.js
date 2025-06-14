@@ -1,4 +1,3 @@
-
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
@@ -6,43 +5,46 @@ const path = require('path');
 module.exports = {
   config: {
     name: "enhance",
-    version: "2.0.0",
-    author: "TOHI-BOT-HUB",
+    version: "3.0.0",
+    author: "Made by Tohidul",
     countDown: 10,
     role: 0,
     usePrefix: true,
-    shortDescription: "🚀 Ultra enhance your images with PicsArt API",
-    longDescription: "Enhance image quality using PicsArt Ultra Enhance API",
+    shortDescription: "🚀 Enhance images with multiple resolutions",
+    longDescription: "Enhance image quality with 2K, 4K, 8K, 16K options using PicsArt API",
     category: "image",
     commandCategory: "image",
     guide: {
-      en: "{p}{n} [reply to image] [upscale_factor: 2-16]"
+      en: "{p}{n} [reply to image] [2k/4k/8k/16k]"
     }
   },
 
   onStart: async function ({ message, args, event, api }) {
     try {
-      // Check for API key
       const apiKey = process.env.PICSART_API_KEY;
       if (!apiKey) {
         return api.sendMessage(
-          "❌ **API Key Missing!**\n\n" +
-          "• Please add your PicsArt API key to Secrets\n" +
-          "• Key name: `PICSART_API_KEY`\n" +
-          "• Get your API key from: https://picsart.io/developers/",
+          "❌ PicsArt API key missing!\nAdd PICSART_API_KEY to Secrets",
           event.threadID, event.messageID
         );
       }
 
       let imageUrl = "";
-      let upscaleFactor = parseInt(args[0]) || 2;
+      let resolution = args[0]?.toLowerCase() || "4k";
 
-      // Validate upscale factor
-      if (upscaleFactor < 2 || upscaleFactor > 16) {
+      // Map resolution to upscale factor
+      const resolutionMap = {
+        "2k": 2,
+        "4k": 4,
+        "8k": 8,
+        "16k": 16
+      };
+
+      let upscaleFactor = resolutionMap[resolution];
+
+      if (!upscaleFactor) {
         return api.sendMessage(
-          "❌ **Invalid Upscale Factor**\n\n" +
-          "• Please use a value between 2-16\n" +
-          "• Example: `/enhance 4` (for 4x upscaling)",
+          "❌ Invalid resolution!\nUse: 2k, 4k, 8k, or 16k\nExample: /enhance 4k",
           event.threadID, event.messageID
         );
       }
@@ -57,36 +59,30 @@ module.exports = {
 
       if (!imageUrl) {
         return api.sendMessage(
-          "❌ **No Image Found**\n\n" +
-          "• Please reply to an image\n" +
-          "• Usage: `/enhance [upscale_factor]`\n" +
-          "• Example: `/enhance 4`",
+          "❌ Reply to an image!\nUsage: /enhance [2k/4k/8k/16k]",
           event.threadID, event.messageID
         );
       }
 
       // Send processing message
       const processingMsg = await api.sendMessage(
-        `🚀 **Ultra Enhancing Image...**\n\n` +
-        `• Upscale Factor: ${upscaleFactor}x\n` +
-        `• Processing with PicsArt AI\n` +
-        `• Please wait...`,
+        `🚀 Enhancing to ${resolution.toUpperCase()}...\nPlease wait...`,
         event.threadID
       );
 
       try {
         // Direct API call to PicsArt Ultra Enhance
         const formData = new FormData();
-        
+
         // Download image first
         const imageResponse = await axios.get(imageUrl, { 
           responseType: 'arraybuffer',
           timeout: 30000 
         });
-        
+
         const imageBuffer = Buffer.from(imageResponse.data);
         const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
-        
+
         formData.append('image', blob, 'image.jpg');
         formData.append('upscale_factor', upscaleFactor.toString());
         formData.append('format', 'JPG');
@@ -105,15 +101,15 @@ module.exports = {
 
         if (enhanceResponse.data?.data?.url) {
           const enhancedImageUrl = enhanceResponse.data.data.url;
-          
+
           // Download enhanced image
           const cacheDir = path.join(__dirname, "cache");
           if (!fs.existsSync(cacheDir)) {
             fs.mkdirSync(cacheDir, { recursive: true });
           }
-          
-          const imagePath = path.join(cacheDir, `enhanced_${Date.now()}.jpg`);
-          
+
+          const imagePath = path.join(cacheDir, `enhanced_${resolution}_${Date.now()}.jpg`);
+
           const finalImageResponse = await axios.get(enhancedImageUrl, {
             responseType: 'stream',
             timeout: 30000
@@ -131,18 +127,7 @@ module.exports = {
           await api.unsendMessage(processingMsg.messageID);
 
           // Send enhanced image
-          const successMessage = `
-╔══════════════════════════════╗
-  🚀 **ULTRA ENHANCE COMPLETE** 🚀
-╚══════════════════════════════╝
-
-✨ **Enhancement Details:**
-• Upscale Factor: ${upscaleFactor}x
-• Technology: PicsArt Ultra Enhance
-• Quality: Professional Grade
-
-🎯 **Powered by PicsArt API**
-          `;
+          const successMessage = `✨ Enhanced to ${resolution.toUpperCase()} successfully!\n🎯 Made by Tohidul`;
 
           await api.sendMessage({
             body: successMessage,
@@ -163,37 +148,31 @@ module.exports = {
       } catch (apiError) {
         await api.unsendMessage(processingMsg.messageID);
         console.error('[ENHANCE] API Error:', apiError.response?.data || apiError.message);
-        
+
         // Check for specific error types
         if (apiError.response?.status === 401) {
           return api.sendMessage(
-            "❌ **Authentication Failed**\n\n" +
-            "• Invalid API key\n" +
-            "• Please check your PICSART_API_KEY in Secrets\n" +
-            "• Get a valid API key from: https://picsart.io/developers/",
+            "❌ Invalid API key!\nCheck PICSART_API_KEY in Secrets",
             event.threadID, event.messageID
           );
         } else if (apiError.response?.status === 402) {
           return api.sendMessage(
-            "❌ **Credits Exhausted**\n\n" +
-            "• Your PicsArt API credits are finished\n" +
-            "• Please top up your credits at: https://picsart.io/developers/",
+            "❌ API credits exhausted!\nTop up at: https://picsart.io/developers/",
             event.threadID, event.messageID
           );
         } else if (apiError.response?.status === 429) {
           return api.sendMessage(
-            "❌ **Rate Limit Exceeded**\n\n" +
-            "• Too many requests\n" +
-            "• Please wait a few minutes and try again",
+            "❌ Rate limit exceeded!\nWait a few minutes and try again",
+            event.threadID, event.messageID
+          );
+        } else if (apiError.response?.data?.code === 403116) {
+          return api.sendMessage(
+            `❌ Image too large for ${resolution.toUpperCase()}!\nTry a smaller image or lower resolution`,
             event.threadID, event.messageID
           );
         } else {
           return api.sendMessage(
-            "❌ **Enhancement Failed**\n\n" +
-            "• API processing error occurred\n" +
-            "• Please try with a different image\n" +
-            "• Make sure image is clear and not corrupted\n\n" +
-            `🔧 **Error:** ${apiError.message}`,
+            `❌ Enhancement failed!\nTry with a different image\nError: ${apiError.message}`,
             event.threadID, event.messageID
           );
         }
@@ -202,10 +181,7 @@ module.exports = {
     } catch (error) {
       console.error('[ENHANCE] Main error:', error);
       return api.sendMessage(
-        "❌ **System Error**\n\n" +
-        "• An unexpected error occurred\n" +
-        "• Please try again later\n\n" +
-        `🔧 **Error:** ${error.message}`,
+        `❌ System error!\nPlease try again later\nError: ${error.message}`,
         event.threadID, event.messageID
       );
     }
