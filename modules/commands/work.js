@@ -88,8 +88,7 @@ module.exports.run = async function({ api, event, args, Currencies, getText }) {
         
         return api.sendMessage(getText("rewarded", job[Math.floor(Math.random() * job.length)], amount), threadID, async () => {
             await Currencies.increaseMoney(senderID, parseInt(amount));
-            data.workTime = Date.now();
-            await Currencies.setData(event.senderID, { data });
+            await Currencies.setData(senderID, { workTime: Date.now() });
             return;
         }, messageID);
     }     
