@@ -2340,5 +2340,31 @@
             "timestamp": 1749803144555
         },
         "lastUpdate": 1749803144555
+    },
+    "100032199712152": {
+        "userID": "100032199712152",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750062271391
+        },
+        "data": {
+            "timestamp": 1750062271391
+        },
+        "lastUpdate": 1750062271391,
+        "name": "Afsana Jahan Mim"
+    },
+    "61567287934615": {
+        "userID": "61567287934615",
+        "money": 0,
+        "exp": 1,
+        "createTime": {
+            "timestamp": 1750062272658
+        },
+        "data": {
+            "timestamp": 1750062272658
+        },
+        "lastUpdate": 1750062274996,
+        "name": "অভিমানী রাজকন্যা"
     }
 }
