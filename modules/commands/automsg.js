@@ -48,14 +48,14 @@ module.exports.onLoad = function ({ api }) {
       const now = new Date();
       // Convert to Bangladesh time (UTC+6)
       const bdTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
-      const currentTime = bdTime.toLocaleString('en-US', { 
+      const timeString = bdTime.toLocaleString('en-US', { 
         hour12: true,
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit'
-      }).split(' ')[1] + ' ' + bdTime.toLocaleString('en-US', { 
-        hour12: true 
-      }).split(' ')[2];
+        second: '2-digit',
+        timeZone: 'UTC'
+      });
+      const currentTime = timeString;
 
       const timeMsg = timeMessages.find(msg => msg.timer === currentTime);
 
@@ -73,29 +73,35 @@ module.exports.onLoad = function ({ api }) {
 
           let targetGroups = [];
 
-          // Check if AUTO_APPROVE system is enabled
-          if (config.AUTO_APPROVE && config.AUTO_APPROVE.enabled && config.AUTO_APPROVE.approvedGroups) {
-            targetGroups = config.AUTO_APPROVE.approvedGroups;
-          } else if (config.APPROVAL && config.APPROVAL.approvedGroups) {
-            // Use manual approval system groups
-            targetGroups = config.APPROVAL.approvedGroups;
-          } else if (global.data.allThreadID) {
-            // Fallback to global thread list
+          // Get all available groups
+          if (global.data && global.data.allThreadID && global.data.allThreadID.length > 0) {
             targetGroups = global.data.allThreadID;
+          } else if (config.AUTO_APPROVE && config.AUTO_APPROVE.approvedGroups && config.AUTO_APPROVE.approvedGroups.length > 0) {
+            targetGroups = config.AUTO_APPROVE.approvedGroups;
+          } else if (config.APPROVAL && config.APPROVAL.approvedGroups && config.APPROVAL.approvedGroups.length > 0) {
+            targetGroups = config.APPROVAL.approvedGroups;
           }
 
+          console.log(`[AUTO MSG DEBUG] Current time: ${currentTime}, Target groups: ${targetGroups.length}`);
+          
           if (targetGroups && targetGroups.length > 0) {
+            let successCount = 0;
             targetGroups.forEach(threadID => {
               try {
                 api.sendMessage(
                   `━━━━━━━━━━ ★ ★ ★ ━━━━━━━━━━\n${randomMessage}\n━━━━━━━━━━ ★ ★ ★ ━━━━━━━━━━\n\n🤖 𝑩𝒐𝒕: TOHI-BOT \n🛠️ Made by TOHIDUL`,
-                  threadID
+                  threadID,
+                  (error) => {
+                    if (!error) successCount++;
+                  }
                 );
               } catch (sendError) {
-                // Silent fail for individual sends
+                console.log(`[AUTO MSG] Send error for thread ${threadID}: ${sendError.message}`);
               }
             });
-            logger.log(`Auto message sent to ${targetGroups.length} groups at ${currentTime}`, "AUTO MSG");
+            logger.log(`Auto message sent to ${targetGroups.length} groups at ${currentTime} (${successCount} successful)`, "AUTO MSG");
+          } else {
+            console.log(`[AUTO MSG] No target groups found at ${currentTime}`);
           }
         } catch (configError) {
           logger.log(`Error reading config for auto message: ${configError.message}`, "ERROR");
@@ -104,7 +110,10 @@ module.exports.onLoad = function ({ api }) {
     } catch (error) {
       logger.log(`Auto message error: ${error.message}`, "ERROR");
     }
-  }, 60000); // Check every minute instead of every second
+  }, 30000); // Check every 30 seconds for better accuracy
+  
+  // Log startup
+  logger.log("Auto message system initialized", "AUTO MSG");
 };
 
 module.exports.run = () => {};
