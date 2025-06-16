@@ -1,8 +1,9 @@
+
 module.exports.config = {
-  name: "automsg", // <-- Bot name!
-  version: "1.0.0",
+  name: "automsg",
+  version: "2.0.0",
   permission: 0,
-  credits: "TOHI-BOT-HUB", // 💎 Credit: TOHIDUL (Legendary) 💎
+  credits: "TOHI-BOT-HUB",
   description: "Legendary stylish Bangla auto time messages by TOHIDUL",
   usePrefix: true,
   commandCategory: "automsg",
@@ -39,81 +40,130 @@ const timeMessages = [
   { timer: "11:00:00 PM", message: ["😴 এখন রাত ১১টা বাজে, সবাই আড্ডা দিতাসে, আমার বউ নাই ভাই 🥺 ঘুম ও আসে না😭 আড্ডা ও দিতে পারি না🥺 কি জ্বালা\n\n💔 𝓢𝓪𝓭 𝓝𝓲𝓰𝓱𝓽"] },
 ];
 
-// Stylish and legendary auto-messaging engine
+let autoMsgInterval = null;
+
 module.exports.onLoad = function ({ api }) {
   const logger = require("../../utils/log.js");
-
-  setInterval(() => {
+  
+  // Clear any existing interval
+  if (autoMsgInterval) {
+    clearInterval(autoMsgInterval);
+  }
+  
+  autoMsgInterval = setInterval(async () => {
     try {
+      // Get current Bangladesh time
       const now = new Date();
-      // Convert to Bangladesh time (UTC+6)
       const bdTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
-      const timeString = bdTime.toLocaleString('en-US', { 
+      
+      // Format time to match our timer format
+      const timeString = bdTime.toLocaleTimeString('en-US', { 
         hour12: true,
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
         timeZone: 'UTC'
       });
-      const currentTime = timeString;
 
-      const timeMsg = timeMessages.find(msg => msg.timer === currentTime);
+      // Find matching time message
+      const timeMsg = timeMessages.find(msg => msg.timer === timeString);
 
       if (timeMsg) {
         const randomMessage = timeMsg.message[Math.floor(Math.random() * timeMsg.message.length)];
-
-        // Get approved groups from config
-        const fs = require('fs');
-        const path = require('path');
-        const configPath = path.join(__dirname, '../../config.json');
-
+        
+        // Get target groups - try multiple sources
+        let targetGroups = [];
+        
         try {
-          delete require.cache[require.resolve(configPath)];
-          const config = require(configPath);
-
-          let targetGroups = [];
-
-          // Get all available groups
-          if (global.data && global.data.allThreadID && global.data.allThreadID.length > 0) {
-            targetGroups = global.data.allThreadID;
-          } else if (config.AUTO_APPROVE && config.AUTO_APPROVE.approvedGroups && config.AUTO_APPROVE.approvedGroups.length > 0) {
-            targetGroups = config.AUTO_APPROVE.approvedGroups;
-          } else if (config.APPROVAL && config.APPROVAL.approvedGroups && config.APPROVAL.approvedGroups.length > 0) {
-            targetGroups = config.APPROVAL.approvedGroups;
+          // Method 1: Get from global data
+          if (global.data && global.data.allThreadID && Array.isArray(global.data.allThreadID)) {
+            targetGroups = global.data.allThreadID.filter(id => id && id.toString().length > 10);
+          }
+          
+          // Method 2: Get from config if global data is empty
+          if (targetGroups.length === 0) {
+            const fs = require('fs');
+            const path = require('path');
+            const configPath = path.join(__dirname, '../../config.json');
+            
+            if (fs.existsSync(configPath)) {
+              delete require.cache[require.resolve(configPath)];
+              const config = require(configPath);
+              
+              if (config.APPROVAL && config.APPROVAL.approvedGroups && Array.isArray(config.APPROVAL.approvedGroups)) {
+                targetGroups = config.APPROVAL.approvedGroups.filter(id => id && id.toString().length > 10);
+              }
+            }
+          }
+          
+          // Method 3: Get active threads from API if still empty
+          if (targetGroups.length === 0) {
+            try {
+              const threadList = await api.getThreadList(25, null, ['INBOX']);
+              targetGroups = threadList
+                .filter(thread => thread.isGroup && thread.threadID)
+                .map(thread => thread.threadID);
+            } catch (apiError) {
+              console.log('[AUTO MSG] API Error:', apiError.message);
+            }
           }
 
-          console.log(`[AUTO MSG DEBUG] Current time: ${currentTime}, Target groups: ${targetGroups.length}`);
+          console.log(`[AUTO MSG] Time: ${timeString}, Target groups: ${targetGroups.length}`);
           
-          if (targetGroups && targetGroups.length > 0) {
+          if (targetGroups.length > 0) {
             let successCount = 0;
-            targetGroups.forEach(threadID => {
+            const finalMessage = `━━━━━━━━━━ ★ ★ ★ ━━━━━━━━━━\n${randomMessage}\n━━━━━━━━━━ ★ ★ ★ ━━━━━━━━━━\n\n🤖 𝑩𝒐𝒕: TOHI-BOT \n🛠️ Made by TOHIDUL`;
+            
+            // Send to all target groups with delay
+            for (let i = 0; i < targetGroups.length; i++) {
+              const threadID = targetGroups[i];
+              
               try {
-                api.sendMessage(
-                  `━━━━━━━━━━ ★ ★ ★ ━━━━━━━━━━\n${randomMessage}\n━━━━━━━━━━ ★ ★ ★ ━━━━━━━━━━\n\n🤖 𝑩𝒐𝒕: TOHI-BOT \n🛠️ Made by TOHIDUL`,
-                  threadID,
-                  (error) => {
-                    if (!error) successCount++;
-                  }
-                );
+                await new Promise((resolve) => {
+                  api.sendMessage(finalMessage, threadID, (error) => {
+                    if (!error) {
+                      successCount++;
+                    }
+                    resolve();
+                  });
+                });
+                
+                // Add small delay between sends to avoid rate limiting
+                if (i < targetGroups.length - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                }
               } catch (sendError) {
                 console.log(`[AUTO MSG] Send error for thread ${threadID}: ${sendError.message}`);
               }
-            });
-            logger.log(`Auto message sent to ${targetGroups.length} groups at ${currentTime} (${successCount} successful)`, "AUTO MSG");
+            }
+            
+            logger.log(`Auto message sent to ${targetGroups.length} groups at ${timeString} (${successCount} successful)`, "AUTO MSG");
           } else {
-            console.log(`[AUTO MSG] No target groups found at ${currentTime}`);
+            console.log(`[AUTO MSG] No target groups found at ${timeString}`);
           }
-        } catch (configError) {
-          logger.log(`Error reading config for auto message: ${configError.message}`, "ERROR");
+          
+        } catch (error) {
+          logger.log(`Auto message error: ${error.message}`, "ERROR");
         }
       }
-    } catch (error) {
-      logger.log(`Auto message error: ${error.message}`, "ERROR");
+    } catch (mainError) {
+      console.log(`[AUTO MSG] Main error: ${mainError.message}`);
     }
-  }, 30000); // Check every 30 seconds for better accuracy
+  }, 30000); // Check every 30 seconds
   
-  // Log startup
-  logger.log("Auto message system initialized", "AUTO MSG");
+  logger.log("Auto message system initialized and running", "AUTO MSG");
 };
 
-module.exports.run = () => {};
+// Manual command to test
+module.exports.run = async function({ api, event, args }) {
+  const { threadID, messageID } = event;
+  
+  if (args[0] === "test") {
+    const testMessage = timeMessages[Math.floor(Math.random() * timeMessages.length)];
+    const finalMessage = `━━━━━━━━━━ ★ ★ ★ ━━━━━━━━━━\n${testMessage.message[0]}\n━━━━━━━━━━ ★ ★ ★ ━━━━━━━━━━\n\n🤖 𝑩𝒐𝒕: TOHI-BOT \n🛠️ Made by TOHIDUL\n\n⏰ Test Message`;
+    
+    return api.sendMessage(finalMessage, threadID, messageID);
+  }
+  
+  return api.sendMessage("🤖 Auto message system is running!\n\n📝 Commands:\n- /automsg test - Test a random message\n\n⏰ Messages are sent automatically every hour", threadID, messageID);
+};
