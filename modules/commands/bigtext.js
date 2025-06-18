@@ -2,7 +2,7 @@ module.exports.config = {
   name: "bigtext",
   version: "1.0.0",
   hasPermssion: 0,
-  usePrefix; true,
+  usePrefix: true,
   credits: "𝙈𝙧𝙏𝙤𝙢𝙓𝙭𝙓",
   description: "combine characters into super giant letters",
   commandCategory: "game",
