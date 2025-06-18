@@ -1,5 +1,5 @@
 module.exports.config = {
-name: "lyrics",
+name: "music2",
 version: "1.0.0",
 hasPermssion: 0,
 usePrefix: true,
