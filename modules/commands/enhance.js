@@ -1,6 +1,6 @@
 
 const axios = require('axios');
-const picsartfordevelopers = require('@picsartfordevelopers/v1.0');
+const picsartfordevelopers = require('@api/picsartfordevelopers');
 
 module.exports.config = {
   name: "enhance",
