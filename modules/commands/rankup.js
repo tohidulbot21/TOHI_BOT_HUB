@@ -88,7 +88,7 @@ module.exports.handleEvent = async function({
       };
       return fallbackMessages[key] || `Message for ${key}`;
     };
-    
+
     var messsage = (typeof thread.customRankup == "undefined") ? msg = getTextSafe("levelup") : msg = thread.customRankup;
 
     messsage = messsage
