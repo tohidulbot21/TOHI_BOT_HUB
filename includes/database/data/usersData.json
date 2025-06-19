@@ -2073,7 +2073,8 @@
         "data": {
             "timestamp": 1749538381439
         },
-        "lastUpdate": 1749538381439
+        "lastUpdate": 1749538381439,
+        "name": "ᎫᎪᏁ ᎢᎪᎻ"
     },
     "61576655197280": {
         "userID": "61576655197280",
@@ -2446,5 +2447,57 @@
         },
         "lastUpdate": 1750332164899,
         "name": "You R Candy"
+    },
+    "100076969407340": {
+        "userID": "100076969407340",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750344536699
+        },
+        "data": {
+            "timestamp": 1750344536699
+        },
+        "lastUpdate": 1750344536699,
+        "name": "Aryan Ahmed"
+    },
+    "61575913680852": {
+        "userID": "61575913680852",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750344539901
+        },
+        "data": {
+            "timestamp": 1750344539901
+        },
+        "lastUpdate": 1750344539901,
+        "name": "Ck Ow"
+    },
+    "61577592834093": {
+        "userID": "61577592834093",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750344544888
+        },
+        "data": {
+            "timestamp": 1750344544888
+        },
+        "lastUpdate": 1750344544888,
+        "name": "Denji San"
+    },
+    "100000967372029": {
+        "userID": "100000967372029",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750344600708
+        },
+        "data": {
+            "timestamp": 1750344600708
+        },
+        "lastUpdate": 1750344600708,
+        "name": "〲Arish আহমেদ Tushar㐃"
     }
 }
