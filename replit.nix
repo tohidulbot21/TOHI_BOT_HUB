@@ -7,5 +7,6 @@
     pkgs.replitPackages.jest
     pkgs.libuuid
     pkgs.util-linux
+    pkgs.libuuid.dev
   ];
 }
