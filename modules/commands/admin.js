@@ -5,9 +5,9 @@ const path = require("path");
 
 module.exports.config = {
   name: "admin",
-  version: "1.0.0",
+  version: "2.2.0",
   hasPermssion: 0,
-  usePrefix:true,
+  usePrefix: true,
   credits: "TOHI-BOT-HUB",
   description: "Show Bot Owner Info",
   commandCategory: "info",
@@ -16,19 +16,14 @@ module.exports.config = {
 };
 
 module.exports.run = async function({ api, event }) {
-  const { senderID } = event;
-  
-  // Check if user is admin (optional - remove this check if you want everyone to see admin info)
-  // if (!global.config.ADMINBOT.includes(senderID)) {
-  //   return api.sendMessage("❌ আপনার এই কমান্ড ব্যবহারের অনুমতি নেই!", event.threadID, event.messageID);
-  // }
+  const { threadID, messageID } = event;
 
   const now = moment().tz("Asia/Dhaka").format("DD/MM/YYYY hh:mm:ss A");
   const imageUrl = "https://i.postimg.cc/nhM2PPjW/admin.png";
   const imagePath = path.join(__dirname, "cache", `admin_${Date.now()}.png`);
 
   const ownerInfo =
-    `╭─────〔 👑 𝐁𝐎𝐓 𝐎𝐖𝐍𝐄𝐑 𝐈𝐍𝐅𝐎 👑 〕─────╮\n` +
+    `╭───〔👑𝐁𝐎𝐓 𝐎𝐖𝐍𝐄𝐑 𝐈𝐍𝐅𝐎👑〕───╮\n` +
     `┃\n` +
     `┃ 🏷️ 𝗡𝗮𝗺𝗲       : 𝙏 𝙊 𝙃 𝙄 𝘿 𝙐 𝙇 ッ\n` +
     `┃ 👨‍💼 𝗚𝗲𝗻𝗱𝗲𝗿     : 𝗠𝗮𝗹𝗲\n` +
@@ -45,58 +40,79 @@ module.exports.run = async function({ api, event }) {
     `┃\n` +
     `┣━━━〔 ⏰ 𝗨𝗣𝗗𝗔𝗧𝗘𝗗 𝗧𝗜𝗠𝗘 〕━━━┫\n` +
     `┃ 🕒 ${now}\n` +
-    `╰──────────────────────────────╯\n` +
+    `╰───────────────────────────╯\n` +
     `💌 𝑪𝒓𝒆𝒂𝒕𝒆𝒅 𝒃𝒚 𝑻𝑶𝑯𝑰𝑫𝑼𝑳 𝑩𝑶𝑻`;
 
+  let loadingMsg;
   try {
-    // Download the image from URL
-    const response = await axios({
-      url: imageUrl,
-      method: 'GET',
-      responseType: 'stream',
-      timeout: 10000
-    });
+    // Step 1: Send loading message (initial 45%)
+    loadingMsg = await api.sendMessage(
+      "⏳ 𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐎𝐰𝐧𝐞𝐫 𝐈𝐧𝐟𝐨...\n\n[▓▓░░░░░░░░░░] 45%",
+      threadID
+    );
+    // Step 2: edit loading bar (super fast step)
+    setTimeout(() => {
+      api.editMessage(
+        "⏳ 𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐎𝐰𝐧𝐞𝐫 𝐈𝐧𝐟𝐨...\n\n[▓▓▓▓▓▓░░░░░░] 75%",
+        loadingMsg.messageID,
+        threadID
+      );
+    }, 100);
 
-    // Ensure cache directory exists
-    const cacheDir = path.dirname(imagePath);
-    if (!fs.existsSync(cacheDir)) {
-      fs.mkdirSync(cacheDir, { recursive: true });
-    }
+    setTimeout(() => {
+      api.editMessage(
+        "⏳ 𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐎𝐰𝐧𝐞𝐫 𝐈𝐧𝐟𝐨...\n\n[▓▓▓▓▓▓▓▓▓▓▓░] 95%",
+        loadingMsg.messageID,
+        threadID
+      );
+    }, 200);
 
-    // Write image to cache
-    const writer = fs.createWriteStream(imagePath);
-    response.data.pipe(writer);
+    // Step 3: Final 100% and process info
+    setTimeout(async () => {
+      try {
+        await api.editMessage(
+          "⏳ 𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐎𝐰𝐧𝐞𝐫 𝐈𝐧𝐟𝐨...\n\n[▓▓▓▓▓▓▓▓▓▓▓▓] 100%",
+          loadingMsg.messageID,
+          threadID
+        );
+        // Download image
+        const response = await axios({
+          url: imageUrl,
+          method: 'GET',
+          responseType: 'stream',
+          timeout: 10000
+        });
 
-    await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
+        // Ensure cache directory exists
+        const cacheDir = path.dirname(imagePath);
+        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-    // Send message with image and auto-cleanup
-    return api.sendMessage({
-      body: ownerInfo,
-      attachment: fs.createReadStream(imagePath)
-    }, event.threadID, () => {
-      // Auto cleanup after sending
-      if (fs.existsSync(imagePath)) {
-        try {
-          fs.unlinkSync(imagePath);
-          console.log(`[ADMIN] Cleaned up cache file: ${imagePath}`);
-        } catch (cleanupError) {
-          console.log(`[ADMIN] Cache cleanup warning: ${cleanupError.message}`);
-        }
+        // Write image to cache
+        const writer = fs.createWriteStream(imagePath);
+        response.data.pipe(writer);
+
+        await new Promise((resolve, reject) => {
+          writer.on('finish', resolve);
+          writer.on('error', reject);
+        });
+
+        // Unsend loading bar and send real info+image
+        await api.unsendMessage(loadingMsg.messageID);
+
+        await api.sendMessage({
+          body: ownerInfo,
+          attachment: fs.createReadStream(imagePath)
+        }, threadID, () => {
+          if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+        });
+
+      } catch (error) {
+        await api.unsendMessage(loadingMsg.messageID);
+        await api.sendMessage(ownerInfo + "\n\n[⛔] ছবি ডাউনলোডে সমস্যা হয়েছে!", threadID, messageID);
       }
-    });
+    }, 350);
 
   } catch (error) {
-    console.error("[ADMIN] Error downloading image:", error.message);
-    
-    // Always try to send the text message even if image fails
-    try {
-      return api.sendMessage(ownerInfo + "\n\n[⛔] ছবি ডাউনলোড করতে সমস্যা হয়েছে!", event.threadID);
-    } catch (sendError) {
-      // Silent fail if even text message fails
-      console.error("[ADMIN] Failed to send fallback message:", sendError.message);
-    }
+    await api.sendMessage(ownerInfo + "\n\n[⛔] লোডিং এ সমস্যা হয়েছে!", threadID, messageID);
   }
 };

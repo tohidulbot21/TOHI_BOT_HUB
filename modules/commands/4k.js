@@ -1,69 +1,49 @@
-exports.config = {
+const axios = require("axios");
 
-  name: '4k',
-
-  version: '0.0.1',
-
-  hasPermssion: 0,
-
+const baseApiUrl = async () => {
+  const base = await axios.get(
+    `https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json`
+  );
+  return base.data.mostakim;
+};
+module.exports.config = {
+  name: "4k",
+  aliases: ["4k", "remini"],
   usePrefix: true,
-
-  credits: 'DC-Nam',
-
-  description: 'Tăng chất lượng ảnh lên 4k',
-
-  commandCategory: 'Ảnh',
-
-  usages: '[image]',
-
-  cooldowns: 3
-
+  commandCategory: "edit",
+  version: "2.0.1",
+  credits: "dipto bhai",
+  category:"edit",
+  description: "Enhance your image with 4k resolution",
+  category: "enhanced",
+  author: "Romim"
 };
 
-let eta = 3;
+module.exports.onStart = async ({ api, event, args }) => {
+  try {
 
-exports.run = async o=> {
-
-  let send = msg => o.api.sendMessage(msg, o.event.threadID, o.event.messageID);
-
-
-  if (o.event.type != 'message_reply')return send(`Please reply 1 photo !
-
-`);
-
-  send(`Increase the resolution for ${o.event.messageReply.attachments.length} image (${o.event.messageReply.attachments.length*eta}s)`);
+    if (!event.messageReply || !event.messageReply.attachments || !event.messageReply.attachments[0]) {
+      return api.sendMessage("𝐏𝐥𝐞𝐚𝐬𝐞 𝐫𝐞𝐩𝐥𝐲 𝐭𝐨 𝐚𝐧 𝐢𝐦𝐚𝐠𝐞 𝐰𝐢𝐭𝐡 𝐭𝐡𝐞 𝐜𝐨𝐦𝐦𝐚𝐧𝐝.", event.threadID, event.messageID);
+    }
 
 
-  let stream = [];
+    const Romim = event.messageReply?.attachments[0]?.url;
 
-  let exec_time = 0;
 
-  for (let i of o.event.messageReply.attachments)try {
+    const apiUrl = (`${await baseApiUrl()}/remini?input=${encodeURIComponent(Romim)}`);
 
-    let res = await require('axios').get(encodeURI(`https://nams.live/upscale.png?{"image":"${i.url}","model":"4x-UltraSharp"}`), {
 
-      responseType: 'stream',
-
+    const imageStream = await axios.get(apiUrl,{
+      responseType: 'stream'
     });
 
 
-    exec_time+=+res.headers.exec_time;
+    api.sendMessage({
+      body: "𝐇𝐞𝐫𝐞 𝐢𝐬 𝐲𝐨𝐮𝐫 𝐞𝐧𝐡𝐚𝐧𝐜𝐞𝐝 𝐩𝐡𝐨𝐭𝐨",
+      attachment: imageStream.data
+    }, event.threadID, event.messageID);
 
-    eta = res.headers.exec_time/1000<<0;
-
-    res.data.path = 'tmp.png';
-
-    stream.push(res.data);
-
-  } catch (e) {};
-
-
-  send({
-
-    body: `Successful (${exec_time/1000<<0}s)`,
-
-    attachment: stream,
-
-  });
-
+  } catch (e) {
+    api.sendMessage(`Error: ${e.message}`, event.threadID, event.messageID);
+  }
 };
