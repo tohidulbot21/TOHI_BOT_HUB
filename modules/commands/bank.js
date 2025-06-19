@@ -1,4 +1,3 @@
-
 module.exports.config = {
   name: "bank",
   version: "2.0.7",
@@ -15,7 +14,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
   const { senderID, messageID, threadID } = event;
   const axios = require('axios');
   const { createReadStream } = require(`fs-extra`);
-  
+
   // Load config
   let config = {};
   try {
@@ -23,24 +22,25 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
   } catch (e) {
     console.log('[BANK] Config not found, using default settings');
   }
-  
+
   const bankConfig = config.BANK_API || {
-    BASE_URL: "http://127.0.0.1:3001/bank",
-    ENABLED: true,
-    FALLBACK_URL: "http://0.0.0.0:3001/bank"
+    BASE_URL: process.env.BANK_API_URL || 'http://0.0.0.0:3002/bank',
+    FALLBACK_URL: process.env.BANK_FALLBACK_URL || 'http://localhost:3002/bank',
+    TIMEOUT: 15000,
+    MAX_RETRIES: 3
   };
-  
+
   if (!bankConfig.ENABLED) {
     return api.sendMessage("❌ Bank system is currently disabled by admin.", threadID, messageID);
   }
-  
+
   const baseURL = bankConfig.BASE_URL;
-  
+
   // Enhanced API call function with error handling and retry logic
   async function makeApiCall(endpoint, params = {}, retries = 1) {
     const queryString = new URLSearchParams(params).toString();
     const url = `${baseURL}${endpoint}${queryString ? '?' + queryString : ''}`;
-    
+
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const response = await axios.get(url, { 
@@ -53,7 +53,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
         return response.data;
       } catch (error) {
         console.log(`[BANK] API Error (attempt ${attempt + 1}): ${error.message}`);
-        
+
         // Handle rate limiting specifically
         if (error.response?.status === 429) {
           if (attempt < retries) {
@@ -63,7 +63,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
           }
           throw new Error('🚫 Bank service is temporarily busy. Please wait 30 seconds and try again.');
         }
-        
+
         // Handle connection errors
         if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
           // Try fallback URL
@@ -84,27 +84,27 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
           }
           throw new Error('🏦 Bank service is starting up. Please wait a moment and try again.');
         }
-        
+
         // If not the last attempt, wait before retrying
         if (attempt < retries) {
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
     }
-    
+
     throw new Error('🏦 Bank service is currently unavailable. Please try again later.');
   }
-  
+
   try {
     const checkBank = await makeApiCall('/check', { ID: senderID });
-    
+
     switch(args[0]) {
         case 'register':
         case '-r':
         case 'r': {
             try {
               const userName = await getUserName(senderID);
-              
+
               const res = await makeApiCall('/register', {
                 senderID: senderID,
                 name: encodeURI(userName)
@@ -125,7 +125,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
             const findParams = {};
             findParams.type = args[1].toUpperCase();
             findParams[args[1].toUpperCase()] = args[2];
-            
+
             let { data } = await makeApiCall('/find', findParams);
             const name = data.message.name;
             const stk = data.message.data.STK;
@@ -162,19 +162,19 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
             if(checkBank.status == false) return api.sendMessage("❌ You don't have a bank account yet! Use `/bank register` to create one.", threadID, messageID);
             const res = await makeApiCall('/top');
             if(res.status == false) return api.sendMessage('❌ No ranking data currently available!', threadID, messageID);
-            
+
             let msg = `🏆 ${res.message}\n\n`;
             let emojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-            
+
             for (let i of res.ranking) {
                 let rankEmoji = emojis[i.rank - 1] || `${i.rank}️⃣`;
                 let displayName = i.name || `User${i.rank}`;
-                
+
                 msg += `${rankEmoji} ${displayName}\n`;
                 msg += `💰 Balance: $${i.money.toLocaleString()}\n`;
                 msg += `━━━━━━━━━━━━━━━━━━━━\n`;
             }
-            
+
             msg += `\n💡 Use "/bank register" to join the ranking!`;
             return api.sendMessage(msg, threadID, messageID);
         }
@@ -261,28 +261,28 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
             helpText += `• /bank info - View your account details\n`;
             helpText += `• /bank find stk <account_number> - Find account by number\n`;
             helpText += `• /bank find id <user_id> - Find account by user ID\n\n`;
-            
+
             helpText += `💰 MONEY OPERATIONS:\n`;
             helpText += `• /bank send <amount> - Deposit money from wallet to bank\n`;
             helpText += `• /bank get <amount> - Withdraw money from bank to wallet\n`;
             helpText += `• /bank pay stk <account_number> <amount> - Transfer to account\n`;
             helpText += `• /bank pay id <user_id> <amount> - Transfer to user ID\n\n`;
-            
+
             helpText += `🔐 SECURITY:\n`;
             helpText += `• /bank pw get - Get your current password\n`;
             helpText += `• /bank pw new - Set a new password\n\n`;
-            
+
             helpText += `📊 RANKINGS:\n`;
             helpText += `• /bank top - View richest users ranking\n\n`;
-            
+
             helpText += `💡 TIPS:\n`;
             helpText += `- All transfers require your bank password\n`;
             helpText += `- Keep your password safe and private\n`;
             helpText += `- Minimum transfer amount is $1\n`;
             helpText += `- Bank balance is separate from wallet balance\n\n`;
-            
+
             helpText += `━━━━━━━━━━━━━━━━━━━━━━━━━`;
-            
+
             try {
                 const picture = (await axios.get(`https://i.imgur.com/5hkQ2CC.jpg`, { responseType: "stream"})).data
                 return api.sendMessage({
@@ -298,7 +298,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
     console.log(`[BANK] Command error: ${error.message}`);
     return api.sendMessage(`❌ ${error.message}`, threadID, messageID);
   }
-  
+
   async function checkMoney(senderID, maxMoney) {
       var i, w;
       i = (await Currencies.getData(senderID)) || {};
@@ -306,7 +306,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
       if (w < parseInt(maxMoney)) return false;
       else return true;
   }
-  
+
   // Helper function to get user name
   async function getUserName(userId) {
     try {
@@ -315,7 +315,7 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
       if (userData && userData.name && userData.name !== 'undefined' && userData.name.trim() && !userData.name.startsWith('User')) {
         return userData.name;
       }
-      
+
       // Try to get name using Users.getNameUser (which has better error handling)
       try {
         const name = await Users.getNameUser(userId);
@@ -325,30 +325,30 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
       } catch (userError) {
         console.log(`[BANK] Users.getNameUser error for ${userId}: ${userError.message}`);
       }
-      
+
       // Try to get from bot's built-in getUserInfo as fallback
       try {
         const userInfo = await new Promise((resolve, reject) => {
           setTimeout(() => reject(new Error('Timeout')), 3000);
-          
+
           api.getUserInfo(userId, (err, data) => {
             if (err) return reject(err);
             resolve(data);
           });
         });
-        
+
         if (userInfo && userInfo[userId] && userInfo[userId].name && userInfo[userId].name.trim()) {
           const name = userInfo[userId].name.trim();
-          
+
           // Update user data
           await Users.setData(userId, { name: name });
-          
+
           return name;
         }
       } catch (apiError) {
         console.log(`[BANK] Bot API error for ${userId}: ${apiError.message}`);
       }
-      
+
       // Fallback with better naming
       const shortId = userId.slice(-6);
       return `FB_User_${shortId}`;
@@ -363,14 +363,14 @@ module.exports.run = async function ({ api, event, args, Currencies, Users }) {
 module.exports.handleReply = async function ({ api, event, handleReply, Currencies, Users }) {
   const axios = require('axios')
   const { senderID, messageID, threadID , body } = event;
-  
+
   const baseURL = handleReply.baseURL || "http://127.0.0.1:3001/bank";
-  
+
   // Enhanced API call function with error handling for replies
   async function makeApiCall(endpoint, params = {}, retries = 1) {
     const queryString = new URLSearchParams(params).toString();
     const url = `${baseURL}${endpoint}${queryString ? '?' + queryString : ''}`;
-    
+
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const response = await axios.get(url, { 
@@ -383,23 +383,23 @@ module.exports.handleReply = async function ({ api, event, handleReply, Currenci
         return response.data;
       } catch (error) {
         console.log(`[BANK] Reply API Error (attempt ${attempt + 1}): ${error.message}`);
-        
+
         if (error.response?.status === 429) {
           if (attempt < retries) {
             await new Promise(resolve => setTimeout(resolve, 3000));
             continue;
           }
         }
-        
+
         if (attempt < retries) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
     }
-    
+
     throw new Error('Bank service is currently unavailable. Please try again later.');
   }
-  
+
   try {
     switch(handleReply.type) {
         case 'paySTK': {
@@ -428,29 +428,29 @@ module.exports.handleReply = async function ({ api, event, handleReply, Currenci
         }
         case 'getMoney': {
             const password = body.trim(); // Clean the password input
-            
+
             if (!password) {
               return api.sendMessage('❌ Password cannot be empty!', threadID, messageID);
             }
-            
+
             try {
               const res = await makeApiCall('/get', {
                 ID: senderID,
                 money: handleReply.money,
                 password: password
               });
-              
+
               if(res.status == false) {
                 return api.sendMessage(`❌ ${res.message}`, threadID, messageID);
               }
-              
+
               await Currencies.increaseMoney(senderID, parseInt(handleReply.money));
-              
+
               const successMsg = `${res.message.noti}\n👤 Account holder: ${res.message.name}\n💰 Remaining balance: $${res.message.money.toLocaleString()}`;
-              
+
               api.sendMessage(successMsg, threadID, messageID);
               return api.sendMessage(successMsg, handleReply.threadID);
-              
+
             } catch (error) {
               console.log(`[BANK] getMoney error: ${error.message}`);
               return api.sendMessage('❌ Withdrawal failed. Please try again.', threadID, messageID);

@@ -6,7 +6,7 @@ const logger = require('./utils/log.js');
 class WebServer {
   constructor() {
     this.app = express();
-    this.port = process.env.PORT || 5000;
+    this.port = process.env.PORT || 3000;
     this.setupMiddleware();
     this.setupRoutes();
   }

@@ -805,7 +805,7 @@ app.get('/bank/password', async (req, res) => {
 async function startBankAPI() {
   await initBankData();
 
-  const PORT = process.env.BANK_API_PORT || 3001;
+  const PORT = process.env.BANK_API_PORT || 3002;
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`⫸ TBH ➤ [ BANK-API ] Bank API server running on port ${PORT}`);
   });
