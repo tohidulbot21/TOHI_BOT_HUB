@@ -33,7 +33,7 @@ module.exports = function (defaultFuncs, api, ctx) {
 			)
 			.then(utils.parseAndCheckLogin(ctx, defaultFuncs))
 			.then(function (resData) {
-				if (resData.error) {
+				if (resData && resData.error) {
 					throw resData;
 				}
 
