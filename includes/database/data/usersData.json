@@ -1,3 +1,4 @@
+
 {
     "100092006324917": {
         "userID": "100092006324917",
@@ -7,99 +8,8 @@
             "timestamp": 1748273172692
         },
         "data": {
-            "userID": "100092006324917",
-            "money": 1e+96,
-            "exp": 1219,
-            "createTime": {
-                "timestamp": 1748273172692
-            },
-            "data": {
-                "userID": "100092006324917",
-                "money": 1e+96,
-                "exp": 1106,
-                "createTime": {
-                    "timestamp": 1748273172692
-                },
-                "data": {
-                    "userID": "100092006324917",
-                    "money": 1e+96,
-                    "exp": 976,
-                    "createTime": {
-                        "timestamp": 1748273172692
-                    },
-                    "data": {
-                        "userID": "100092006324917",
-                        "money": 1e+96,
-                        "exp": 975,
-                        "createTime": {
-                            "timestamp": 1748273172692
-                        },
-                        "data": {
-                            "userID": "100092006324917",
-                            "money": 1e+96,
-                            "exp": 974,
-                            "createTime": {
-                                "timestamp": 1748273172692
-                            },
-                            "data": {
-                                "userID": "100092006324917",
-                                "money": 1e+96,
-                                "exp": 973,
-                                "createTime": {
-                                    "timestamp": 1748273172692
-                                },
-                                "data": {
-                                    "userID": "100092006324917",
-                                    "money": 1e+96,
-                                    "exp": 972,
-                                    "createTime": {
-                                        "timestamp": 1748273172692
-                                    },
-                                    "data": {
-                                        "userID": "100092006324917",
-                                        "money": 1e+96,
-                                        "exp": 969,
-                                        "createTime": {
-                                            "timestamp": 1748273172692
-                                        },
-                                        "data": {
-                                            "userID": "100092006324917",
-                                            "money": 1e+96,
-                                            "exp": 969,
-                                            "createTime": {
-                                                "timestamp": 1748273172692
-                                            },
-                                            "data": {
-                                                "timestamp": 1748273172692,
-                                                "busy": "suiiiiiiiii",
-                                                "workTime": 1748691039584
-                                            },
-                                            "lastUpdate": 1748273172692,
-                                            "workTime": 1749443309498
-                                        },
-                                        "lastUpdate": 1748273172692,
-                                        "workTime": 1749443358078
-                                    },
-                                    "lastUpdate": 1748273172692,
-                                    "workTime": 1749443421762
-                                },
-                                "lastUpdate": 1748273172692,
-                                "workTime": 1749443501351
-                            },
-                            "lastUpdate": 1748273172692,
-                            "workTime": 1749443528604
-                        },
-                        "lastUpdate": 1748273172692,
-                        "workTime": 1749443538110
-                    },
-                    "lastUpdate": 1748273172692,
-                    "workTime": 1749443733243
-                },
-                "lastUpdate": 1748273172692,
-                "workTime": 1749536881985,
-                "busy": false
-            },
-            "lastUpdate": 1748273172692,
+            "timestamp": 1748273172692,
+            "busy": false,
             "workTime": 1749800037975
         },
         "lastUpdate": 1750408501725,
