@@ -25,7 +25,7 @@ module.exports.run = async function ({ api, event, args }) {
   // Load config
   delete require.cache[require.resolve(configPath)];
   var config = require(configPath);
-  const Groups = require('../../includes/database/groups');
+  const Groups = require('../../includes/database/groups')({ api });
 
   // Initialize APPROVAL system
   if (!config.APPROVAL) {
