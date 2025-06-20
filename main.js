@@ -412,7 +412,9 @@ function initializeBot() {
     // Load custom functions
     try {
       const custom = require('./custom.js');
-      custom({ api });
+      if (typeof custom === 'function') {
+        custom({ api });
+      }
       logger.log("Custom functions loaded successfully", "CUSTOM");
     } catch (error) {
       logger.log(`Custom functions failed: ${error.message}`, "CUSTOM");
@@ -729,4 +731,8 @@ process.on('uncaughtException', (error) => {
 
 // Initialize script cleanup utility
 require('./utils/scriptCleanup');
-global.data.groups = require('./includes/database/groups')({ api });
+
+// Initialize groups data only after api is available
+if (typeof global.client !== 'undefined' && global.client.api) {
+  global.data.groups = require('./includes/database/groups')({ api: global.client.api });
+}
