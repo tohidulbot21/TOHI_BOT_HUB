@@ -1,6 +1,18 @@
 const path = require('path');
 const fs = require('fs');
 
+// Add Canvas imports with fallback handling
+let createCanvas, loadImage;
+try {
+  const Canvas = require('canvas');
+  createCanvas = Canvas.createCanvas;
+  loadImage = Canvas.loadImage;
+} catch (error) {
+  console.log('Canvas not available, image generation disabled');
+  createCanvas = null;
+  loadImage = null;
+}
+
 const cacheDir = path.join(__dirname, 'cache');
 const rankpng = path.join(__dirname, 'cache', 'rankup');
 
@@ -119,24 +131,52 @@ module.exports.handleEvent = async function({
       .data;
     fs.writeFileSync(pathImg, Buffer.from(getbackground, "utf-8"));
 
-    let baseImage = await loadImage(pathImg);
-    let baseAvt1 = await loadImage(pathAvt1);
-    let canvas = createCanvas(baseImage.width, baseImage.height);
-    let ctx = canvas.getContext("2d");
-    ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
-    ctx.rotate(-25 * Math.PI / 180);
-    ctx.drawImage(baseAvt1, 27.3, 103, 108, 108);
-    const imageBuffer = canvas.toBuffer();
-    fs.writeFileSync(pathImg, imageBuffer);
-    fs.removeSync(pathAvt1);
-    api.sendMessage({
-      body: messsage
-      , mentions: [{
-        tag: name
-        , id: senderID
-      }]
-      , attachment: fs.createReadStream(pathImg)
-    }, event.threadID, () => fs.unlinkSync(pathImg));
+    // Check if Canvas is available
+    if (!loadImage || !createCanvas) {
+      // Send text-only message if Canvas is not available
+      fs.removeSync(pathAvt1);
+      fs.removeSync(pathImg);
+      return api.sendMessage({
+        body: messsage + "\n\n📝 Note: Image generation temporarily unavailable",
+        mentions: [{
+          tag: name,
+          id: senderID
+        }]
+      }, event.threadID);
+    }
+
+    try {
+      let baseImage = await loadImage(pathImg);
+      let baseAvt1 = await loadImage(pathAvt1);
+      let canvas = createCanvas(baseImage.width, baseImage.height);
+      let ctx = canvas.getContext("2d");
+      ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+      ctx.rotate(-25 * Math.PI / 180);
+      ctx.drawImage(baseAvt1, 27.3, 103, 108, 108);
+      const imageBuffer = canvas.toBuffer();
+      fs.writeFileSync(pathImg, imageBuffer);
+      fs.removeSync(pathAvt1);
+      api.sendMessage({
+        body: messsage,
+        mentions: [{
+          tag: name,
+          id: senderID
+        }],
+        attachment: fs.createReadStream(pathImg)
+      }, event.threadID, () => fs.unlinkSync(pathImg));
+    } catch (canvasError) {
+      // Fallback to text-only if Canvas operations fail
+      console.log(`Canvas error in rankup: ${canvasError.message}`);
+      fs.removeSync(pathAvt1);
+      fs.removeSync(pathImg);
+      return api.sendMessage({
+        body: messsage + "\n\n📝 Note: Image generation failed, showing text only",
+        mentions: [{
+          tag: name,
+          id: senderID
+        }]
+      }, event.threadID);
+    }
 
   }
 
