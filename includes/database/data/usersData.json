@@ -2273,14 +2273,14 @@
     "61567287934615": {
         "userID": "61567287934615",
         "money": 0,
-        "exp": 3,
+        "exp": 4,
         "createTime": {
             "timestamp": 1750062272658
         },
         "data": {
             "timestamp": 1750062272658
         },
-        "lastUpdate": 1750241551674,
+        "lastUpdate": 1750420637080,
         "name": "অভিমানী রাজকন্যা"
     },
     "61577202480557": {
@@ -3133,14 +3133,14 @@
     "61557208041347": {
         "userID": "61557208041347",
         "money": 0,
-        "exp": 6,
+        "exp": 9,
         "createTime": {
             "timestamp": 1750419912004
         },
         "data": {
             "timestamp": 1750419912004
         },
-        "lastUpdate": 1750420360221,
+        "lastUpdate": 1750420622425,
         "name": "Fmz Shamim 󱢏"
     },
     "61561584959836": {
@@ -3181,5 +3181,18 @@
         },
         "lastUpdate": 1750420248081,
         "name": "S S Sãgør Khãñ"
+    },
+    "61555061139235": {
+        "userID": "61555061139235",
+        "money": 0,
+        "exp": 1,
+        "createTime": {
+            "timestamp": 1750420593368
+        },
+        "data": {
+            "timestamp": 1750420593368
+        },
+        "lastUpdate": 1750420594879,
+        "name": "NO BI TA"
     }
 }
