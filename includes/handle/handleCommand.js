@@ -298,8 +298,45 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
 
       const userName = global.data.userName.get(senderID) || "Unknown User";
 
-      // Log command usage
-      logger.log(`Command "${commandName}" used by ${userName} (${senderID})`, "COMMAND");
+      // Enhanced stylish command usage logging
+      try {
+        let groupName = "Private Chat";
+        if (event.threadID && event.threadID !== event.senderID) {
+          try {
+            const threadInfo = await api.getThreadInfo(event.threadID);
+            groupName = threadInfo.threadName || `Group ${event.threadID.slice(-6)}`;
+          } catch (e) {
+            groupName = `Group ${event.threadID.slice(-6)}`;
+          }
+        }
+
+        // Create stylish console output
+        const chalk = require("chalk");
+        const gradient = require("gradient-string");
+        
+        console.log(chalk.cyan("╭─────────────────────────────────────╮"));
+        console.log(chalk.cyan("│") + gradient.rainbow("        🚀 COMMAND EXECUTED 🚀       ") + chalk.cyan("│"));
+        console.log(chalk.cyan("╰─────────────────────────────────────╯"));
+        console.log(chalk.yellow("📋 Group Name: ") + chalk.green(groupName));
+        console.log(chalk.yellow("👤 User: ") + chalk.blue(userName));
+        console.log(chalk.yellow("🆔 UID: ") + chalk.magenta(senderID));
+        console.log(chalk.yellow("⚡ Command: ") + chalk.red(`/${commandName}`));
+        console.log(chalk.yellow("📊 Status: ") + chalk.green("✅ SUCCESS"));
+        console.log(chalk.yellow("⏰ Time: ") + chalk.cyan(new Date().toLocaleString("en-US", {
+          timeZone: "Asia/Dhaka",
+          hour12: true,
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })));
+        console.log(chalk.cyan("─".repeat(40)));
+      } catch (logError) {
+        // Fallback to simple logging if stylish logging fails
+        logger.log(`Command "${commandName}" used by ${userName} (${senderID})`, "COMMAND");
+      }
 
       // Execute command with enhanced error handling
       try {
