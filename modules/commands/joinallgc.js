@@ -1,16 +1,15 @@
-
-const fs = require('fs-extra');
-const path = require('path');
+const fs = require("fs-extra");
+const path = require("path");
 
 module.exports.config = {
   name: "joinallgc",
-  version: "1.0.0",
-  hasPermssion: 2,
-  usePrefix: true,
+  version: "2.0.0",
+  hasPermssion: 3,
   credits: "TOHI-BOT-HUB",
-  description: "Auto rejoin all approved groups after account ban",
-  commandCategory: "Admin",
-  usages: "/joinallgc [backup|restore|show]",
+  description: "Backup, restore and rejoin approved groups",
+  usePrefix: true,
+  commandCategory: "admin",
+  usages: "backup | restore | rejoin | list",
   cooldowns: 10
 };
 
@@ -22,32 +21,19 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   const { threadID, messageID } = event;
-  const groupDataPath = path.join(__dirname, '../../utils/groupdata.json');
-  const { configPath } = global.client;
-  
-  // Load config and groupdata
-  delete require.cache[require.resolve(configPath)];
-  var config = require(configPath);
-  
-  let groupData = {};
+  const groupsDataPath = path.join(__dirname, '../../includes/database/data/groupsData.json');
+
+  // Initialize groups database if not exists
+  if (!fs.existsSync(groupsDataPath)) {
+    fs.writeFileSync(groupsDataPath, JSON.stringify({}, null, 2));
+  }
+
+  // Load groups database
+  let groupsData = {};
   try {
-    if (fs.existsSync(groupDataPath)) {
-      groupData = JSON.parse(fs.readFileSync(groupDataPath, 'utf8'));
-    } else {
-      groupData = {
-        approvedGroups: [],
-        lastUpdated: "",
-        totalGroups: 0,
-        backupNote: "This file stores approved group data for rejoin feature"
-      };
-    }
+    groupsData = JSON.parse(fs.readFileSync(groupsDataPath, 'utf8'));
   } catch (error) {
-    groupData = {
-      approvedGroups: [],
-      lastUpdated: "",
-      totalGroups: 0,
-      backupNote: "This file stores approved group data for rejoin feature"
-    };
+    groupsData = {};
   }
 
   const command = (args[0] || "").toLowerCase();
@@ -55,211 +41,189 @@ module.exports.run = async function ({ api, event, args }) {
   try {
     switch (command) {
       case "backup": {
-        // Backup current approved groups
-        if (!config.APPROVAL || !config.APPROVAL.approvedGroups || config.APPROVAL.approvedGroups.length === 0) {
-          return api.sendMessage("📝 কোনো approved গ্রুপ নেই backup করার জন্য!", threadID, messageID);
+        // Get bot's current groups
+        const threadList = await api.getThreadList(100, null, ['INBOX']);
+        const botGroups = threadList.filter(thread => thread.isGroup && thread.isSubscribed);
+
+        if (botGroups.length === 0) {
+          return api.sendMessage("📝 কোন গ্রুপে যোগ দেওয়া নেই backup করার জন্য!", threadID, messageID);
         }
 
         const currentTime = new Date().toLocaleString("bn-BD", {
           timeZone: "Asia/Dhaka"
         });
 
-        // Create detailed backup
-        const backupData = {
-          approvedGroups: [],
-          lastUpdated: currentTime,
-          totalGroups: config.APPROVAL.approvedGroups.length,
-          backupNote: "Backup created for rejoin feature"
-        };
+        let backupCount = 0;
 
-        // Get group details
-        for (const groupId of config.APPROVAL.approvedGroups) {
+        // Backup each group
+        for (const group of botGroups) {
           try {
-            const info = await api.getThreadInfo(groupId);
-            backupData.approvedGroups.push({
-              threadID: groupId,
-              threadName: info.threadName || "Unknown Group",
-              memberCount: info.participantIDs.length,
+            const threadInfo = await api.getThreadInfo(group.threadID);
+
+            // Store group data in groupsData.json
+            groupsData[group.threadID] = {
+              threadID: group.threadID,
+              threadName: threadInfo.threadName || "Unknown Group",
+              memberCount: threadInfo.participantIDs ? threadInfo.participantIDs.length : 0,
+              isApproved: true,
+              isPending: false,
+              isRejected: false,
               backupDate: currentTime,
-              status: "backed_up"
-            });
+              status: "auto_backed_up",
+              adminList: threadInfo.adminIDs || [],
+              lastUpdated: currentTime,
+              settings: {
+                allowCommands: true,
+                autoApprove: false
+              }
+            };
+
+            backupCount++;
+
+            // Add delay to prevent rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
           } catch (error) {
-            // If can't get info, still backup the ID
-            backupData.approvedGroups.push({
-              threadID: groupId,
-              threadName: "Group Info Unavailable",
-              memberCount: 0,
-              backupDate: currentTime,
-              status: "info_unavailable"
-            });
+            console.log(`Backup failed for group ${group.threadID}: ${error.message}`);
           }
         }
 
-        // Save backup
-        fs.writeFileSync(groupDataPath, JSON.stringify(backupData, null, 2), 'utf8');
+        // Save groups database
+        fs.writeFileSync(groupsDataPath, JSON.stringify(groupsData, null, 2), 'utf8');
 
         const successMsg = `✅ BACKUP সম্পূর্ণ হয়েছে!
+📊 মোট গ্রুপ: ${backupCount}টি
+📅 ব্যাকআপ সময়: ${currentTime}
+💾 সেভ লোকেশন: groupsData.json
 
-📊 Backup Details:
-🔸 মোট গ্রুপ: ${backupData.totalGroups}টি
-🕒 Backup সময়: ${currentTime}
-📁 সংরক্ষিত: utils/groupdata.json
-
-💡 এখন account ban হলে /joinallgc restore দিয়ে সব গ্রুপে rejoin করতে পারবেন!`;
+📝 Note: সব গ্রুপের ডেটা groupsData.json এ সেভ করা হয়েছে।`;
 
         return api.sendMessage(successMsg, threadID, messageID);
       }
 
       case "restore": {
-        // Auto rejoin to backed up groups
-        if (!groupData.approvedGroups || groupData.approvedGroups.length === 0) {
-          return api.sendMessage("❌ কোনো backup ডাটা নেই! প্রথমে /joinallgc backup করুন।", threadID, messageID);
+        const approvedGroups = Object.values(groupsData).filter(group => group.isApproved);
+
+        if (approvedGroups.length === 0) {
+          return api.sendMessage("📝 কোন approved গ্রুপ ডেটা পাওয়া যায়নি restore করার জন্য!", threadID, messageID);
         }
 
-        api.sendMessage(`🔄 Auto Rejoin শুরু হচ্ছে...
-        
-📊 মোট গ্রুপ: ${groupData.approvedGroups.length}টি
-⏳ অনুগ্রহ করে অপেক্ষা করুন...`, threadID);
+        let restoreMsg = `📋 RESTORE INFORMATION:\n\n`;
+        restoreMsg += `✅ মোট approved গ্রুপ: ${approvedGroups.length}টি\n\n`;
 
+        approvedGroups.forEach((group, index) => {
+          restoreMsg += `${index + 1}. ${group.threadName}\n`;
+          restoreMsg += `   ID: ${group.threadID}\n`;
+          restoreMsg += `   Members: ${group.memberCount}\n`;
+          restoreMsg += `   Backup: ${group.backupDate}\n\n`;
+        });
+
+        restoreMsg += `💡 এই গ্রুপগুলোতে rejoin করতে "joinallgc rejoin" কমান্ড ব্যবহার করুন।`;
+
+        return api.sendMessage(restoreMsg, threadID, messageID);
+      }
+
+      case "rejoin": {
+        const approvedGroups = Object.values(groupsData).filter(group => group.isApproved);
+
+        if (approvedGroups.length === 0) {
+          return api.sendMessage("📝 কোন approved গ্রুপ ডেটা পাওয়া যায়নি rejoin করার জন্য!", threadID, messageID);
+        }
+
+        api.sendMessage(`🔄 ${approvedGroups.length}টি গ্রুপে rejoin শুরু করা হচ্ছে...`, threadID);
+
+        const results = [];
         let successCount = 0;
         let failCount = 0;
-        let results = [];
 
-        for (let i = 0; i < groupData.approvedGroups.length; i++) {
-          const group = groupData.approvedGroups[i];
-          
+        for (const group of approvedGroups) {
           try {
-            // Get current user ID
+            // Check if bot is already in the group
+            const threadInfo = await api.getThreadInfo(group.threadID);
             const botUserID = api.getCurrentUserID();
-            
-            // Check if bot is already in group
-            try {
-              const threadInfo = await api.getThreadInfo(group.threadID);
-              const isAlreadyMember = threadInfo.participantIDs.includes(botUserID);
-              
-              if (isAlreadyMember) {
-                results.push(`✅ ${group.threadName} - Already member`);
-                successCount++;
-                continue;
-              }
-            } catch (checkError) {
-              // Group might not exist or bot doesn't have access
-              results.push(`❌ ${group.threadName} - Can't access group`);
-              failCount++;
-              continue;
+
+            if (threadInfo.participantIDs.includes(botUserID)) {
+              results.push(`✅ ${group.threadName} - Already joined`);
+              successCount++;
+            } else {
+              // Note: Auto-joining requires invitation from group members
+              results.push(`⏳ ${group.threadName} - Rejoin attempt (manual invitation may be needed)`);
+
+              // Update group status in database
+              groupsData[group.threadID] = {
+                ...groupsData[group.threadID],
+                lastRejoinAttempt: new Date().toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" }),
+                rejoinStatus: "attempted"
+              };
             }
 
-            // Try to rejoin (this requires group invitation or public group)
-            // Note: Auto-joining requires the group to be public or bot to be invited
-            results.push(`⏳ ${group.threadName} - Rejoin attempt (manual invitation may be needed)`);
-            
             // Add delay to prevent rate limiting
             await new Promise(resolve => setTimeout(resolve, 2000));
-            
+
           } catch (error) {
             results.push(`❌ ${group.threadName} - Rejoin failed`);
             failCount++;
           }
         }
 
-        // Update config with groups that bot is now in
-        if (!config.APPROVAL) {
-          config.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
-        }
+        // Save updated groups database
+        fs.writeFileSync(groupsDataPath, JSON.stringify(groupsData, null, 2), 'utf8');
 
-        // Re-approve groups that bot successfully joined
-        const currentApproved = new Set(config.APPROVAL.approvedGroups.map(id => String(id)));
-        
-        for (const group of groupData.approvedGroups) {
-          try {
-            const threadInfo = await api.getThreadInfo(group.threadID);
-            const botUserID = api.getCurrentUserID();
-            
-            if (threadInfo.participantIDs.includes(botUserID)) {
-              if (!currentApproved.has(String(group.threadID))) {
-                config.APPROVAL.approvedGroups.push(String(group.threadID));
-                successCount++;
-              }
-            }
-          } catch (error) {
-            // Group not accessible
+        const resultMsg = `🎯 REJOIN RESULTS:\n\n${results.join('\n')}\n\n✅ Success: ${successCount}\n❌ Failed: ${failCount}\n\n💡 Note: Bot can only join groups through manual invitation by group members.`;
+
+        return api.sendMessage(resultMsg, threadID, messageID);
+      }
+
+      case "list": {
+        const allGroups = Object.values(groupsData);
+        const approvedGroups = allGroups.filter(group => group.isApproved);
+        const pendingGroups = allGroups.filter(group => group.isPending);
+        const rejectedGroups = allGroups.filter(group => group.isRejected);
+
+        let listMsg = `📊 GROUP DATABASE STATUS:\n\n`;
+        listMsg += `✅ Approved: ${approvedGroups.length}\n`;
+        listMsg += `⏳ Pending: ${pendingGroups.length}\n`;
+        listMsg += `❌ Rejected: ${rejectedGroups.length}\n`;
+        listMsg += `📁 Total: ${allGroups.length}\n\n`;
+
+        if (approvedGroups.length > 0) {
+          listMsg += `✅ APPROVED GROUPS:\n`;
+          approvedGroups.slice(0, 10).forEach((group, index) => {
+            listMsg += `${index + 1}. ${group.threadName}\n`;
+          });
+          if (approvedGroups.length > 10) {
+            listMsg += `... এবং আরো ${approvedGroups.length - 10}টি\n`;
           }
         }
 
-        // Save updated config
-        const { writeFileSync } = require('fs-extra');
-        writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+        listMsg += `\n💾 Data stored in: groupsData.json`;
 
-        const reportMsg = `🎯 AUTO REJOIN সম্পূর্ণ!
-
-📊 Report:
-✅ সফল: ${successCount}টি গ্রুপ
-❌ ব্যর্থ: ${failCount}টি গ্রুপ
-
-💡 Note: Facebook bot auto-join করতে পারে না। গ্রুপে manually invite করা লাগবে। তবে invite পাওয়ার পর bot automatically approve হয়ে যাবে।
-
-🔍 /joinallgc show দিয়ে backup list দেখুন।`;
-
-        return api.sendMessage(reportMsg, threadID, messageID);
-      }
-
-      case "show": {
-        // Show backed up groups
-        if (!groupData.approvedGroups || groupData.approvedGroups.length === 0) {
-          return api.sendMessage("📝 কোনো backup ডাটা নেই!", threadID, messageID);
-        }
-
-        let msg = `📋 BACKUP GROUP LIST:
-
-📊 মোট backup: ${groupData.totalGroups}টি গ্রুপ
-🕒 Last backup: ${groupData.lastUpdated}
-
-┌─── GROUP DETAILS ───┐\n`;
-
-        for (let i = 0; i < Math.min(groupData.approvedGroups.length, 10); i++) {
-          const group = groupData.approvedGroups[i];
-          msg += `${i + 1}. ${group.threadName}\n`;
-          msg += `   🆔 ${group.threadID}\n`;
-          msg += `   👥 ${group.memberCount} members\n`;
-          msg += `   📅 ${group.backupDate}\n\n`;
-        }
-
-        if (groupData.approvedGroups.length > 10) {
-          msg += `... এবং আরও ${groupData.approvedGroups.length - 10}টি গ্রুপ\n\n`;
-        }
-
-        msg += `└─────────────────────────┘
-
-💡 Commands:
-🔸 /joinallgc backup - নতুন backup তৈরি
-🔸 /joinallgc restore - সব গ্রুপে rejoin
-🔸 /joinallgc show - এই list`;
-
-        return api.sendMessage(msg, threadID, messageID);
+        return api.sendMessage(listMsg, threadID, messageID);
       }
 
       default: {
-        const helpMsg = `📋 JOINALLGC COMMAND HELP:
+        const helpMsg = `📋 JOINALLGC COMMANDS:
 
-🔸 /joinallgc backup — বর্তমান approved গ্রুপগুলো backup করুন
-🔸 /joinallgc restore — backup থেকে সব গ্রুপে rejoin করুন  
-🔸 /joinallgc show — backup list দেখুন
-🔸 /joinallgc help — এই help মেসেজ
+🔄 joinallgc backup
+   - বর্তমান গ্রুপগুলো backup করুন
 
-🎯 কিভাবে কাজ করে:
-1️⃣ প্রথমে /joinallgc backup দিন
-2️⃣ Account ban হলে নতুন account দিয়ে bot চালান
-3️⃣ /joinallgc restore দিন
-4️⃣ গ্রুপগুলোতে manually invite নিন
-5️⃣ Bot automatically approve হয়ে যাবে!
+📋 joinallgc restore  
+   - Backup করা গ্রুপের তালিকা দেখুন
 
-⚠️ Note: Facebook auto-join allow করে না। Group invite প্রয়োজন।`;
+🔄 joinallgc rejoin
+   - Backup করা গ্রুপগুলোতে rejoin করুন
+
+📊 joinallgc list
+   - গ্রুপ database স্ট্যাটাস দেখুন
+
+💾 সব ডেটা groupsData.json এ সেভ হয়`;
 
         return api.sendMessage(helpMsg, threadID, messageID);
       }
     }
+
   } catch (error) {
-    console.error("Joinallgc command error:", error);
-    return api.sendMessage("❌ কিছু ভুল হয়েছে! আবার চেষ্টা করুন।", threadID, messageID);
+    console.error("JoinAllGC Error:", error);
+    return api.sendMessage(`❌ Error: ${error.message}`, threadID, messageID);
   }
 };
