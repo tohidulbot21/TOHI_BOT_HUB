@@ -851,5 +851,24 @@
         "data": {
             "timestamp": 1750423662895
         }
+    },
+    "100065508130616": {
+        "threadInfo": {
+            "threadID": "100065508130616",
+            "threadName": null,
+            "emoji": null,
+            "adminIDs": [],
+            "participantIDs": [
+                "100065508130616",
+                "100058914930837"
+            ],
+            "isGroup": false
+        },
+        "createTime": {
+            "timestamp": 1750432259247
+        },
+        "data": {
+            "timestamp": 1750432259247
+        }
     }
 }

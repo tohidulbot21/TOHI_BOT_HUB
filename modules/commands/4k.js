@@ -1,49 +1,64 @@
-const axios = require("axios");
+const axios = require('axios');
+const fs = require('fs');
 
-const baseApiUrl = async () => {
-  const base = await axios.get(
-    `https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json`
-  );
-  return base.data.mostakim;
-};
-module.exports.config = {
-  name: "4k",
-  aliases: ["4k", "remini"],
-  usePrefix: true,
-  commandCategory: "edit",
-  version: "2.0.1",
-  credits: "dipto bhai",
-  category:"edit",
-  description: "Enhance your image with 4k resolution",
-  category: "enhanced",
-  author: "Romim"
-};
+const xyz = "ArYANAHMEDRUDRO";
 
-module.exports.onStart = async ({ api, event, args }) => {
-  try {
+module.exports = {
+  config: {
+    name: "4k",
+    version: "1.0.0",
+    hasPermssion: 0,
+    usePrefix: true,
+    credits: "ArYAN",
+    premium: false,
+    description: "Enhance Photo - Image Generator",
+    commandCategory: "Image Editing Tools",
+    usages: "Reply to an image or provide image URL",
+    cooldowns: 5,
+    dependencies: {
+      path: "",
+      'fs-extra': ""
+    }
+  },
 
-    if (!event.messageReply || !event.messageReply.attachments || !event.messageReply.attachments[0]) {
-      return api.sendMessage("𝐏𝐥𝐞𝐚𝐬𝐞 𝐫𝐞𝐩𝐥𝐲 𝐭𝐨 𝐚𝐧 𝐢𝐦𝐚𝐠𝐞 𝐰𝐢𝐭𝐡 𝐭𝐡𝐞 𝐜𝐨𝐦𝐦𝐚𝐧𝐝.", event.threadID, event.messageID);
+  run: async function({ api, event, args }) {
+    const tempImagePath = __dirname + '/cache/enhanced_image.jpg';
+    const { threadID, messageID } = event;
+
+    const imageUrl = event.messageReply ? 
+      event.messageReply.attachments[0].url : 
+      args.join(' ');
+
+    if (!imageUrl) {
+      api.sendMessage("Please reply to an image or provide an image URL", threadID, messageID);
+      return;
     }
 
+    try {
+      const processingMsg = await api.sendMessage("𝐏𝐥𝐞𝐚𝐬𝐞 𝐖𝐚𝐢𝐭 𝐁𝐚𝐛𝐲...😘", threadID);
 
-    const Romim = event.messageReply?.attachments[0]?.url;
+      const apiUrl = `https://aryan-xyz-upscale-api-phi.vercel.app/api/upscale-image?imageUrl=${encodeURIComponent(imageUrl)}&apikey=${xyz}`;
 
+      const enhancementResponse = await axios.get(apiUrl);
+      const enhancedImageUrl = enhancementResponse.data?.resultImageUrl;
 
-    const apiUrl = (`${await baseApiUrl()}/remini?input=${encodeURIComponent(Romim)}`);
+      if (!enhancedImageUrl) {
+        throw new Error("Failed to get enhanced image URL.");
+      }
 
+      const enhancedImage = (await axios.get(enhancedImageUrl, { responseType: 'arraybuffer' })).data;
 
-    const imageStream = await axios.get(apiUrl,{
-      responseType: 'stream'
-    });
+      fs.writeFileSync(tempImagePath, Buffer.from(enhancedImage, 'binary'));
 
+      api.sendMessage({
+        body: "✅ 𝐈𝐦𝐚𝐠𝐞 𝐆𝐞𝐧𝐞𝐫𝐚𝐭𝐞𝐝 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥𝐥𝐲!",
+        attachment: fs.createReadStream(tempImagePath)
+      }, threadID, () => fs.unlinkSync(tempImagePath), messageID);
 
-    api.sendMessage({
-      body: "𝐇𝐞𝐫𝐞 𝐢𝐬 𝐲𝐨𝐮𝐫 𝐞𝐧𝐡𝐚𝐧𝐜𝐞𝐝 𝐩𝐡𝐨𝐭𝐨",
-      attachment: imageStream.data
-    }, event.threadID, event.messageID);
+      api.unsendMessage(processingMsg.messageID);
 
-  } catch (e) {
-    api.sendMessage(`Error: ${e.message}`, event.threadID, event.messageID);
+    } catch (error) {
+      api.sendMessage(`❌ Error`, threadID, messageID);
+    }
   }
 };
