@@ -174,8 +174,8 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
           return;
         }
       } else {
-        // For non-group messages, allow all commands
-        return;
+        // For non-group messages (inbox), allow all commands - continue execution
+        logger.log(`Inbox command allowed from user ${event.senderID}`, "DEBUG");
       }
 
       // Get thread settings
