@@ -4,8 +4,8 @@ const configPath = require('path').join(__dirname, '../../config.json');
 
 module.exports.config = {
   name: "pendingApproval",
-  eventType: ["log:thread-add"],
-  version: "1.0.0",
+  eventType: ["log:subscribe", "log:thread-add"],
+  version: "1.1.0",
   credits: "TOHI-BOT-HUB",
   description: "Auto approve or handle pending groups"
 };
@@ -14,8 +14,8 @@ module.exports.run = async function({ api, event, Users, Threads, Groups }) {
   try {
     const { threadID, author, logMessageType } = event;
 
-    // Only handle when bot is added to group
-    if (logMessageType !== "log:thread-add") return;
+    // Handle both log:subscribe and log:thread-add events
+    if (!["log:subscribe", "log:thread-add"].includes(logMessageType)) return;
 
     // Check if bot was added
     const botID = api.getCurrentUserID();
@@ -63,13 +63,21 @@ module.exports.run = async function({ api, event, Users, Threads, Groups }) {
         `🆔 Group ID: ${threadID}\n` +
         `👥 Members: ${threadInfo.participantIDs?.length || 0}\n` +
         `📅 Added: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n` +
-        `✅ Approve করতে: ${global.config.PREFIX || '*'}approve ${threadID}\n` +
+        `✅ Approve করতে: ${global.config.PREFIX || '.'}approve ${threadID}\n` +
         `❌ Reject করতে: bot কে group থেকে remove করুন`;
 
+      // Send notification to all admins
       if (global.config.ADMINBOT && global.config.ADMINBOT.length > 0) {
-        global.config.ADMINBOT.forEach(adminID => {
-          api.sendMessage(adminMessage, adminID);
-        });
+        for (const adminID of global.config.ADMINBOT) {
+          try {
+            await api.sendMessage(adminMessage, adminID);
+            console.log(`✓ Admin notification sent to: ${adminID}`);
+          } catch (error) {
+            console.error(`✗ Failed to send notification to admin ${adminID}:`, error.message);
+          }
+        }
+      } else {
+        console.log('⚠️ No admin IDs configured in ADMINBOT array');
       }
     }
 
