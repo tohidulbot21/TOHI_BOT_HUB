@@ -246,8 +246,10 @@ module.exports = function ({ api }) {
           break;
           
         default:
-          // Unknown event type - log for debugging
-          logger.log(`Unknown event type: ${event.type}`, "DEBUG");
+          // Ignore common Facebook events that don't need handling
+          if (event.type !== "typ" && event.type !== "typing" && event.type !== "presence") {
+            logger.log(`Unknown event type: ${event.type}`, "DEBUG");
+          }
           break;
       }
       
