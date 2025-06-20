@@ -21,9 +21,6 @@ module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID } = event;
   const Groups = require('../../includes/database/groups')({ api });
 
-  // Initialize Groups system (migration will happen automatically)
-  Groups.migrateFromConfig();
-
   const command = (args[0] || "").toLowerCase();
 
   try {

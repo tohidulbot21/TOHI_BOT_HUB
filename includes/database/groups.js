@@ -13,7 +13,8 @@ module.exports = function({ api }) {
         autoApprove: {
           enabled: true,
           autoApproveMessage: false
-        }
+        },
+        migrated: false
       },
       groups: {}
     }, null, 2));
@@ -254,6 +255,12 @@ module.exports = function({ api }) {
     // Migrate old config data (if exists)
     migrateFromConfig: function() {
       try {
+        // Check if already migrated
+        const data = JSON.parse(fs.readFileSync(groupsDataPath, "utf8"));
+        if (data.settings && data.settings.migrated) {
+          return true; // Already migrated, skip
+        }
+        
         const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
         
         if (config.APPROVAL) {
@@ -313,6 +320,9 @@ module.exports = function({ api }) {
           });
         }
         
+        // Mark as migrated
+        this.updateSettings({ migrated: true });
+        
         console.log("✅ Migration from config.json completed successfully!");
         return true;
       } catch (error) {
@@ -322,10 +332,8 @@ module.exports = function({ api }) {
     }
   };
   
-  // Auto migrate on initialization
-  setTimeout(() => {
-    Groups.migrateFromConfig();
-  }, 1000);
+  // Auto migrate on first initialization only
+  Groups.migrateFromConfig();
   
   return Groups;
 };
