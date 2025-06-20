@@ -1,4 +1,3 @@
-
 {
     "100092006324917": {
         "userID": "100092006324917",
@@ -2169,7 +2168,8 @@
         "data": {
             "timestamp": 1749706369943
         },
-        "lastUpdate": 1749706369943
+        "lastUpdate": 1749706369943,
+        "name": "You R Candy"
     },
     "61577288275441": {
         "userID": "61577288275441",
@@ -3076,5 +3076,57 @@
         },
         "lastUpdate": 1750419086779,
         "name": "MD Kamrul Hasan Ullah"
+    },
+    "100066990249886": {
+        "userID": "100066990249886",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750419832197
+        },
+        "data": {
+            "timestamp": 1750419832197
+        },
+        "lastUpdate": 1750419832197,
+        "name": "Maksuda Akter Shaty"
+    },
+    "61571701267875": {
+        "userID": "61571701267875",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750419837826
+        },
+        "data": {
+            "timestamp": 1750419837826
+        },
+        "lastUpdate": 1750419837826,
+        "name": "নান্টু ঘটক"
+    },
+    "61574859084912": {
+        "userID": "61574859084912",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750419857435
+        },
+        "data": {
+            "timestamp": 1750419857435
+        },
+        "lastUpdate": 1750419857435,
+        "name": "রাজ্য ছাড়া রাজা"
+    },
+    "61558133919025": {
+        "userID": "61558133919025",
+        "money": 0,
+        "exp": 2,
+        "createTime": {
+            "timestamp": 1750419901711
+        },
+        "data": {
+            "timestamp": 1750419901711
+        },
+        "lastUpdate": 1750419908907,
+        "name": "Alif Bhuiyan"
     }
 }

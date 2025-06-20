@@ -792,5 +792,30 @@
         "data": {
             "timestamp": 1750419060368
         }
+    },
+    "23895263330101140": {
+        "threadInfo": {
+            "threadID": "23895263330101140",
+            "threadName": "404 Group Not Found..........",
+            "emoji": "👋",
+            "adminIDs": [
+                {
+                    "id": "61554108388717"
+                },
+                {
+                    "id": "100059945869227"
+                }
+            ],
+            "participantIDs": [
+                "100065508130616"
+            ],
+            "isGroup": false
+        },
+        "createTime": {
+            "timestamp": 1750419855902
+        },
+        "data": {
+            "timestamp": 1750419855902
+        }
     }
 }

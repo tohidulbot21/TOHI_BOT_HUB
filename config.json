@@ -21,11 +21,10 @@
   "commandDisabled": [],
   "eventDisabled": [],
   "BOTNAME": "TOHI-BOT",
-  "PREFIX": "*",
+  "PREFIX": ".",
   "ADMINBOT": [
     "100092006324917"
   ],
-  
   "DESIGN": {
     "Title": "TOHI-BOT-HUB",
     "Theme": "matrix",
@@ -115,5 +114,10 @@
     "BASE_URL": "http://0.0.0.0:3001/bank",
     "ENABLED": true,
     "FALLBACK_URL": "http://localhost:3001/bank"
+  },
+  "APPROVAL": {
+    "approvedGroups": [],
+    "pendingGroups": [],
+    "rejectedGroups": []
   }
 }
