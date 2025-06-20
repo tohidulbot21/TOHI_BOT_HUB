@@ -2,7 +2,7 @@
     "100092006324917": {
         "userID": "100092006324917",
         "money": 1e+96,
-        "exp": 1503,
+        "exp": 1504,
         "createTime": {
             "timestamp": 1748273172692
         },
@@ -11,7 +11,7 @@
             "busy": false,
             "workTime": 1749800037975
         },
-        "lastUpdate": 1750420381422,
+        "lastUpdate": 1750423199456,
         "name": "MD Tohidul Islam",
         "lastDaily": 1749800679916
     },
@@ -3055,14 +3055,14 @@
     "100078437917435": {
         "userID": "100078437917435",
         "money": 0,
-        "exp": 0,
+        "exp": 1,
         "createTime": {
             "timestamp": 1750419061011
         },
         "data": {
             "timestamp": 1750419061011
         },
-        "lastUpdate": 1750419061011,
+        "lastUpdate": 1750423201923,
         "name": "Sʜʌŋto Bʜʌɩ"
     },
     "100064278596899": {
@@ -3194,5 +3194,18 @@
         },
         "lastUpdate": 1750420594879,
         "name": "NO BI TA"
+    },
+    "100090230637952": {
+        "userID": "100090230637952",
+        "money": 0,
+        "exp": 1,
+        "createTime": {
+            "timestamp": 1750423245987
+        },
+        "data": {
+            "timestamp": 1750423245987
+        },
+        "lastUpdate": 1750423247794,
+        "name": "কবি কাজি নজরুল ইসলাম"
     }
 }
