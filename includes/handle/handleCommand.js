@@ -128,20 +128,18 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         const isApproved = approvalConfig.APPROVAL.approvedGroups.includes(String(event.threadID));
         const isOwner = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
 
-        // If group is not approved and sender is not owner, block all commands
-        if (!isApproved && !isOwner) {
-          // Block all commands for non-owners in unapproved groups
-          return;
-        }
-        
-        // Allow approve command for owners even in unapproved groups
-        if (!isApproved && isOwner) {
-          const messageBody = event.body || "";
-          const prefix = global.config.PREFIX || "/";
-          const command = messageBody.substring(prefix.length).split(' ')[0].toLowerCase();
-          
-          // Only allow approve command for owners in unapproved groups
-          if (command !== "approve") {
+        // Parse command early
+        const messageBody = event.body || "";
+        const prefix = global.config.PREFIX || "/";
+        const commandName = messageBody.substring(prefix.length).split(' ')[0].toLowerCase();
+
+        // If group is not approved
+        if (!isApproved) {
+          // Allow approve command for owners
+          if (isOwner && commandName === "approve") {
+            // Let approve command pass through
+          } else {
+            // Block all other commands
             return;
           }
         }

@@ -42,11 +42,10 @@ module.exports.run = async function({ api, event, Groups }) {
         return; // Let approve command pass through for owners
       }
       
-      // Block all commands for non-owners or non-approve commands
-      if (!isOwner) {
-        event.blockCommand = true;
-      } else if (command !== 'approve') {
-        event.blockCommand = true;
+      // Block all other commands for everyone else
+      if (!isOwner || command !== 'approve') {
+        // Don't send duplicate messages, just block silently
+        return;
       }
       
       // Block all other commands
