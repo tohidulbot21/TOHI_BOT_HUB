@@ -123,6 +123,10 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
       // Check if group is approved before executing any commands using new Groups system
       const Groups = require('../database/groups')({ api: global.client.api });
 
+      // Check if user is admin/owner
+      const isAdmin = global.config.ADMINBOT?.includes(senderID);
+      const isOwner = global.config.ADMINBOT?.includes(senderID);
+
       // For group chats, check if group is approved (strict approval system)
       if (event.threadID && event.threadID !== event.senderID) {
         // Get group approval status - but allow commands by default if Groups is not working
@@ -155,7 +159,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         }
 
         // Block unapproved groups (except owners and approve command)
-        if (!isApproved && !isOwner && !isApproveCommand) {
+        if (!isApproved && !isAdmin && !isOwner && !isApproveCommand) {
           // Send notification only once per group per session
           if (!global.notifiedGroups) global.notifiedGroups = new Set();
 
@@ -175,7 +179,12 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         }
       } else {
         // For non-group messages (inbox), allow all commands - continue execution
-        logger.log(`Inbox command allowed from user ${event.senderID}`, "DEBUG");
+        // Special handling for admin users in inbox
+        if (isAdmin || isOwner) {
+          logger.log(`Admin/Owner inbox command allowed from user ${event.senderID}`, "DEBUG");
+        } else {
+          logger.log(`Inbox command allowed from user ${event.senderID}`, "DEBUG");
+        }
       }
 
       // Get thread settings
@@ -209,10 +218,8 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
 
       const commandConfig = command.config;
 
-      // Permission check
+      // Permission check - use already defined admin check
       if (commandConfig.permission > 0) {
-        const isAdmin = global.config.ADMINBOT?.includes(senderID);
-        const isOwner = global.config.ADMINBOT?.includes(senderID);
         if (!isAdmin && !isOwner && commandConfig.permission >= 2) {
           return; // Silently ignore for non-admins
         }
