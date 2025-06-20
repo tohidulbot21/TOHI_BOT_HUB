@@ -133,6 +133,10 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
           // Only allow approve command for owner
           const messageBody = event.body || "";
           const prefix = global.config.PREFIX || "/";
+          const command = messageBody.substring(prefix.length).split(' ')[0].toLowerCase();
+          
+          // Block all commands for non-owners in unapproved groups
+          return;
 
           if (messageBody.startsWith(prefix + "approve") && isOwner) {
             // Allow approve command to pass through

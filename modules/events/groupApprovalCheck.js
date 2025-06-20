@@ -37,10 +37,8 @@ module.exports.run = async function({ api, event, Groups }) {
     if (!isApproved && !isOwner) {
       const command = event.body.split(' ')[0].substring(1).toLowerCase();
       
-      // Allow only approve command for owner
-      if (command === 'approve' && isOwner) {
-        return; // Let the command pass through
-      }
+      // Block all commands for non-owners
+      event.blockCommand = true;
       
       // Block all other commands
       if (isPending) {
@@ -98,9 +96,6 @@ module.exports.run = async function({ api, event, Groups }) {
           console.error('Error handling new group:', error);
         }
       }
-      
-      // Block the command by setting a flag
-      event.blockCommand = true;
     } else if (isApproved) {
       // Group is approved - ensure data is up to date
       try {
