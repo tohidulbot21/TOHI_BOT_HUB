@@ -2,7 +2,7 @@
     "100092006324917": {
         "userID": "100092006324917",
         "money": 1e+96,
-        "exp": 1502,
+        "exp": 1504,
         "createTime": {
             "timestamp": 1748273172692
         },
@@ -11,7 +11,7 @@
             "busy": false,
             "workTime": 1749800037975
         },
-        "lastUpdate": 1750408501725,
+        "lastUpdate": 1750420104344,
         "name": "MD Tohidul Islam",
         "lastDaily": 1749800679916
     },
@@ -3054,14 +3054,14 @@
     "100078437917435": {
         "userID": "100078437917435",
         "money": 0,
-        "exp": 0,
+        "exp": 2,
         "createTime": {
             "timestamp": 1750419061011
         },
         "data": {
             "timestamp": 1750419061011
         },
-        "lastUpdate": 1750419061011,
+        "lastUpdate": 1750419994785,
         "name": "Sʜʌŋto Bʜʌɩ"
     },
     "100064278596899": {
@@ -3080,14 +3080,14 @@
     "100066990249886": {
         "userID": "100066990249886",
         "money": 0,
-        "exp": 0,
+        "exp": 1,
         "createTime": {
             "timestamp": 1750419832197
         },
         "data": {
             "timestamp": 1750419832197
         },
-        "lastUpdate": 1750419832197,
+        "lastUpdate": 1750419914554,
         "name": "Maksuda Akter Shaty"
     },
     "61571701267875": {
@@ -3119,14 +3119,27 @@
     "61558133919025": {
         "userID": "61558133919025",
         "money": 0,
-        "exp": 2,
+        "exp": 0,
         "createTime": {
             "timestamp": 1750419901711
         },
         "data": {
             "timestamp": 1750419901711
         },
-        "lastUpdate": 1750419908907,
+        "lastUpdate": 1750419901711,
         "name": "Alif Bhuiyan"
+    },
+    "61557208041347": {
+        "userID": "61557208041347",
+        "money": 0,
+        "exp": 5,
+        "createTime": {
+            "timestamp": 1750419912004
+        },
+        "data": {
+            "timestamp": 1750419912004
+        },
+        "lastUpdate": 1750420060233,
+        "name": "Fmz Shamim 󱢏"
     }
 }
