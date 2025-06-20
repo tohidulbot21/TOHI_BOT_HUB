@@ -174,8 +174,8 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
           return;
         }
       } else {
-        // For non-group messages, allow all commands
-        return;
+        // For non-group messages (inbox), allow all commands - continue execution
+        logger.log(`Inbox command allowed from user ${event.senderID}`, "DEBUG");
       }
 
       // Get thread settings
@@ -212,7 +212,8 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
       // Permission check
       if (commandConfig.permission > 0) {
         const isAdmin = global.config.ADMINBOT?.includes(senderID);
-        if (!isAdmin && commandConfig.permission >= 2) {
+        const isOwner = global.config.ADMINBOT?.includes(senderID);
+        if (!isAdmin && !isOwner && commandConfig.permission >= 2) {
           return; // Silently ignore for non-admins
         }
       }
