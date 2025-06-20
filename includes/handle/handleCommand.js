@@ -123,76 +123,59 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
       // Check if group is approved before executing any commands using new Groups system
       const Groups = require('../database/groups')({ api: global.client.api });
 
-      // Check if this is a bot owner first
-      const isOwner = global.config.ADMINBOT?.includes(senderID);
-
       // For group chats, check if group is approved (strict approval system)
       if (event.threadID && event.threadID !== event.senderID) {
-        // Parse command early to check for approve command
+        // Get group approval status - but allow commands by default if Groups is not working
+        let isApproved = true;
+        let isPending = false;
+        let isRejected = false;
+
+        try {
+          isApproved = Groups.isApproved(event.threadID);
+          isPending = Groups.isPending(event.threadID);
+          isRejected = Groups.isRejected(event.threadID);
+        } catch (error) {
+          // If Groups system fails, allow commands to work
+          logger.log(`Groups system error, allowing commands: ${error.message}`, "DEBUG");
+          isApproved = true;
+        }
+
+        // Parse command early
         const messageBody = event.body || "";
         const prefix = global.config.PREFIX || "+";
         const commandName = messageBody.substring(prefix.length).split(' ')[0].toLowerCase();
+
+        // Allow only approve command for owners in unapproved groups
         const isApproveCommand = commandName === "approve";
 
-        // Always allow approve command for owners
-        if (isOwner && isApproveCommand) {
-          logger.log(`Approve command allowed for owner in group ${event.threadID}`, "DEBUG");
-          // Continue to execute the command
-        } else {
-          // Get group approval status
-          let isApproved = false;
-          let isPending = false;
-          let isRejected = false;
-
-          try {
-            isApproved = Groups.isApproved(event.threadID);
-            isPending = Groups.isPending(event.threadID);
-            isRejected = Groups.isRejected(event.threadID);
-
-            // Debug logging
-            logger.log(`Group ${event.threadID} status - Approved: ${isApproved}, Pending: ${isPending}, Rejected: ${isRejected}`, "DEBUG");
-          } catch (error) {
-            // If Groups system fails, check if group exists in data
-            logger.log(`Groups system error: ${error.message}`, "DEBUG");
-            const groupData = Groups.getData(event.threadID);
-            if (!groupData) {
-              // Group doesn't exist, add to pending
-              Groups.createData(event.threadID);
-              Groups.addToPending(event.threadID);
-              isPending = true;
-            }
-          }
-
-          // Block rejected groups completely (except owners)
-          if (isRejected && !isOwner) {
-            logger.log(`Command ${commandName} blocked in rejected group ${event.threadID}`, "DEBUG");
-            return;
-          }
-
-          // Block unapproved groups (except owners)
-          if (!isApproved && !isOwner) {
-            // Send notification only once per group per session
-            if (!global.notifiedGroups) global.notifiedGroups = new Set();
-
-            if (!global.notifiedGroups.has(event.threadID)) {
-              api.sendMessage(
-                `⚠️ এই গ্রুপটি এখনো approve করা হয়নি!\n\n` +
-                `🚫 Bot commands কাজ করবে না যতক্ষণ না admin approve করে।\n` +
-                `👑 Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}\n\n` +
-                `📋 Group ID: ${event.threadID}\n` +
-                `📊 Status: ${isPending ? 'Pending' : 'Unknown'}`,
-                event.threadID
-              );
-              global.notifiedGroups.add(event.threadID);
-            }
-
-            logger.log(`Command ${commandName} blocked in unapproved group ${event.threadID}`, "DEBUG");
-            return;
-          }
-
-          // Log successful approval check
-          logger.log(`Command ${commandName} allowed in approved group ${event.threadID}`, "DEBUG");
+        // Block rejected groups completely (except owners)
+        if (isRejected && !isOwner) {
+          logger.log(`Command ${commandName} blocked in rejected group ${event.threadID}`, "DEBUG");
+          return;
         }
+
+        // Block unapproved groups (except owners and approve command)
+        if (!isApproved && !isOwner && !isApproveCommand) {
+          // Send notification only once per group per session
+          if (!global.notifiedGroups) global.notifiedGroups = new Set();
+
+          if (!global.notifiedGroups.has(event.threadID)) {
+            api.sendMessage(
+              `⚠️ এই গ্রুপটি এখনো approve করা হয়নি!\n\n` +
+              `🚫 Bot commands কাজ করবে না যতক্ষণ না admin approve করে।\n` +
+              `👑 Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}\n\n` +
+              `📋 Group ID: ${event.threadID}`,
+              event.threadID
+            );
+            global.notifiedGroups.add(event.threadID);
+          }
+
+          logger.log(`Command ${commandName} blocked in unapproved group ${event.threadID}`, "DEBUG");
+          return;
+        }
+      } else {
+        // For non-group messages, allow all commands
+        return;
       }
 
       // Get thread settings
