@@ -8,17 +8,59 @@ module.exports = function({ api }) {
   
   // Initialize groups data file if not exists
   if (!fs.existsSync(groupsDataPath)) {
-    fs.writeFileSync(groupsDataPath, JSON.stringify({}, null, 2));
+    fs.writeFileSync(groupsDataPath, JSON.stringify({
+      settings: {
+        autoApprove: {
+          enabled: true,
+          autoApproveMessage: false
+        }
+      },
+      groups: {}
+    }, null, 2));
   }
   
   const Groups = {
     // Get all groups data
     getAll: function() {
       try {
-        return JSON.parse(fs.readFileSync(groupsDataPath, "utf8"));
+        const data = JSON.parse(fs.readFileSync(groupsDataPath, "utf8"));
+        return data.groups || {};
       } catch (error) {
         console.error("Error reading groups data:", error);
         return {};
+      }
+    },
+    
+    // Get settings
+    getSettings: function() {
+      try {
+        const data = JSON.parse(fs.readFileSync(groupsDataPath, "utf8"));
+        return data.settings || {
+          autoApprove: {
+            enabled: true,
+            autoApproveMessage: false
+          }
+        };
+      } catch (error) {
+        return {
+          autoApprove: {
+            enabled: true,
+            autoApproveMessage: false
+          }
+        };
+      }
+    },
+    
+    // Update settings
+    updateSettings: function(newSettings) {
+      try {
+        const data = JSON.parse(fs.readFileSync(groupsDataPath, "utf8"));
+        data.settings = { ...data.settings, ...newSettings };
+        fs.writeFileSync(groupsDataPath, JSON.stringify(data, null, 2));
+        return true;
+      } catch (error) {
+        console.error("Error updating settings:", error);
+        return false;
       }
     },
     
@@ -29,15 +71,18 @@ module.exports = function({ api }) {
     },
     
     // Set group data
-    setData: function(threadID, data) {
+    setData: function(threadID, groupData) {
       try {
-        const allGroups = this.getAll();
-        allGroups[threadID] = {
-          ...allGroups[threadID],
-          ...data,
+        const data = JSON.parse(fs.readFileSync(groupsDataPath, "utf8"));
+        if (!data.groups) data.groups = {};
+        
+        data.groups[threadID] = {
+          ...data.groups[threadID],
+          ...groupData,
           lastUpdated: new Date().toISOString()
         };
-        fs.writeFileSync(groupsDataPath, JSON.stringify(allGroups, null, 2));
+        
+        fs.writeFileSync(groupsDataPath, JSON.stringify(data, null, 2));
         return true;
       } catch (error) {
         console.error("Error setting group data:", error);
@@ -53,9 +98,7 @@ module.exports = function({ api }) {
           threadID: threadID,
           threadName: groupInfo.threadName || "Unknown Group",
           memberCount: groupInfo.participantIDs ? groupInfo.participantIDs.length : 0,
-          isApproved: false,
-          isPending: false,
-          isRejected: false,
+          status: "pending", // pending, approved, rejected
           createdAt: new Date().toISOString(),
           lastUpdated: new Date().toISOString(),
           adminList: groupInfo.adminIDs || [],
@@ -76,28 +119,8 @@ module.exports = function({ api }) {
     // Approve group
     approveGroup: function(threadID) {
       try {
-        // Update config.json
-        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        if (!config.APPROVAL) {
-          config.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
-        }
-        
-        // Add to approved list
-        if (!config.APPROVAL.approvedGroups.includes(threadID)) {
-          config.APPROVAL.approvedGroups.push(threadID);
-        }
-        
-        // Remove from pending and rejected lists
-        config.APPROVAL.pendingGroups = config.APPROVAL.pendingGroups.filter(id => id !== threadID);
-        config.APPROVAL.rejectedGroups = config.APPROVAL.rejectedGroups.filter(id => id !== threadID);
-        
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-        
-        // Update groups data
         this.setData(threadID, {
-          isApproved: true,
-          isPending: false,
-          isRejected: false,
+          status: "approved",
           approvedAt: new Date().toISOString(),
           settings: {
             allowCommands: true,
@@ -115,28 +138,8 @@ module.exports = function({ api }) {
     // Reject group
     rejectGroup: function(threadID) {
       try {
-        // Update config.json
-        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        if (!config.APPROVAL) {
-          config.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
-        }
-        
-        // Add to rejected list
-        if (!config.APPROVAL.rejectedGroups.includes(threadID)) {
-          config.APPROVAL.rejectedGroups.push(threadID);
-        }
-        
-        // Remove from approved and pending lists
-        config.APPROVAL.approvedGroups = config.APPROVAL.approvedGroups.filter(id => id !== threadID);
-        config.APPROVAL.pendingGroups = config.APPROVAL.pendingGroups.filter(id => id !== threadID);
-        
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-        
-        // Update groups data
         this.setData(threadID, {
-          isApproved: false,
-          isPending: false,
-          isRejected: true,
+          status: "rejected",
           rejectedAt: new Date().toISOString(),
           settings: {
             allowCommands: false,
@@ -154,24 +157,8 @@ module.exports = function({ api }) {
     // Add to pending
     addToPending: function(threadID) {
       try {
-        // Update config.json
-        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        if (!config.APPROVAL) {
-          config.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
-        }
-        
-        // Add to pending list
-        if (!config.APPROVAL.pendingGroups.includes(threadID)) {
-          config.APPROVAL.pendingGroups.push(threadID);
-        }
-        
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-        
-        // Update groups data
         this.setData(threadID, {
-          isApproved: false,
-          isPending: true,
-          isRejected: false,
+          status: "pending",
           pendingAt: new Date().toISOString(),
           settings: {
             allowCommands: false,
@@ -188,92 +175,20 @@ module.exports = function({ api }) {
     
     // Check if group is approved
     isApproved: function(threadID) {
-      try {
-        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        return config.APPROVAL && config.APPROVAL.approvedGroups && config.APPROVAL.approvedGroups.includes(threadID);
-      } catch (error) {
-        return false;
-      }
+      const groupData = this.getData(threadID);
+      return groupData && groupData.status === "approved";
     },
     
     // Check if group is pending
     isPending: function(threadID) {
-      try {
-        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        return config.APPROVAL && config.APPROVAL.pendingGroups && config.APPROVAL.pendingGroups.includes(threadID);
-      } catch (error) {
-        return false;
-      }
+      const groupData = this.getData(threadID);
+      return groupData && groupData.status === "pending";
     },
     
     // Check if group is rejected
     isRejected: function(threadID) {
-      try {
-        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        return config.APPROVAL && config.APPROVAL.rejectedGroups && config.APPROVAL.rejectedGroups.includes(threadID);
-      } catch (error) {
-        return false;
-      }
-    },
-    
-    // Sync with config.json
-    syncWithConfig: function() {
-      try {
-        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        if (!config.APPROVAL) return;
-        
-        const allGroups = this.getAll();
-        
-        // Update approved groups
-        if (config.APPROVAL.approvedGroups) {
-          config.APPROVAL.approvedGroups.forEach(threadID => {
-            if (!allGroups[threadID]) {
-              this.createData(threadID);
-            }
-            this.setData(threadID, {
-              isApproved: true,
-              isPending: false,
-              isRejected: false,
-              settings: { allowCommands: true }
-            });
-          });
-        }
-        
-        // Update pending groups
-        if (config.APPROVAL.pendingGroups) {
-          config.APPROVAL.pendingGroups.forEach(threadID => {
-            if (!allGroups[threadID]) {
-              this.createData(threadID);
-            }
-            this.setData(threadID, {
-              isApproved: false,
-              isPending: true,
-              isRejected: false,
-              settings: { allowCommands: false }
-            });
-          });
-        }
-        
-        // Update rejected groups
-        if (config.APPROVAL.rejectedGroups) {
-          config.APPROVAL.rejectedGroups.forEach(threadID => {
-            if (!allGroups[threadID]) {
-              this.createData(threadID);
-            }
-            this.setData(threadID, {
-              isApproved: false,
-              isPending: false,
-              isRejected: true,
-              settings: { allowCommands: false }
-            });
-          });
-        }
-        
-        return true;
-      } catch (error) {
-        console.error("Error syncing with config:", error);
-        return false;
-      }
+      const groupData = this.getData(threadID);
+      return groupData && groupData.status === "rejected";
     },
     
     // Get groups by status
@@ -282,11 +197,7 @@ module.exports = function({ api }) {
       const result = [];
       
       for (const [threadID, groupData] of Object.entries(allGroups)) {
-        if (status === 'approved' && groupData.isApproved) {
-          result.push({ threadID, ...groupData });
-        } else if (status === 'pending' && groupData.isPending) {
-          result.push({ threadID, ...groupData });
-        } else if (status === 'rejected' && groupData.isRejected) {
+        if (groupData.status === status) {
           result.push({ threadID, ...groupData });
         }
       }
@@ -294,34 +205,126 @@ module.exports = function({ api }) {
       return result;
     },
     
+    // Get approved groups list (for compatibility)
+    getApprovedGroups: function() {
+      return this.getByStatus("approved").map(group => group.threadID);
+    },
+    
+    // Get pending groups list (for compatibility)
+    getPendingGroups: function() {
+      return this.getByStatus("pending").map(group => group.threadID);
+    },
+    
+    // Get rejected groups list (for compatibility)
+    getRejectedGroups: function() {
+      return this.getByStatus("rejected").map(group => group.threadID);
+    },
+    
     // Remove group completely
     removeGroup: function(threadID) {
       try {
-        // Remove from config.json
-        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        if (config.APPROVAL) {
-          config.APPROVAL.approvedGroups = config.APPROVAL.approvedGroups.filter(id => id !== threadID);
-          config.APPROVAL.pendingGroups = config.APPROVAL.pendingGroups.filter(id => id !== threadID);
-          config.APPROVAL.rejectedGroups = config.APPROVAL.rejectedGroups.filter(id => id !== threadID);
-          fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        const data = JSON.parse(fs.readFileSync(groupsDataPath, "utf8"));
+        if (data.groups && data.groups[threadID]) {
+          delete data.groups[threadID];
+          fs.writeFileSync(groupsDataPath, JSON.stringify(data, null, 2));
         }
-        
-        // Remove from groups data
-        const allGroups = this.getAll();
-        delete allGroups[threadID];
-        fs.writeFileSync(groupsDataPath, JSON.stringify(allGroups, null, 2));
-        
         return true;
       } catch (error) {
         console.error("Error removing group:", error);
         return false;
       }
+    },
+    
+    // Check if auto approve is enabled
+    isAutoApproveEnabled: function() {
+      const settings = this.getSettings();
+      return settings.autoApprove && settings.autoApprove.enabled;
+    },
+    
+    // Enable/disable auto approve
+    setAutoApprove: function(enabled) {
+      return this.updateSettings({
+        autoApprove: {
+          ...this.getSettings().autoApprove,
+          enabled: enabled
+        }
+      });
+    },
+    
+    // Migrate old config data (if exists)
+    migrateFromConfig: function() {
+      try {
+        const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+        
+        if (config.APPROVAL) {
+          // Migrate approved groups
+          if (config.APPROVAL.approvedGroups) {
+            config.APPROVAL.approvedGroups.forEach(threadID => {
+              if (!this.getData(threadID)) {
+                this.setData(threadID, {
+                  threadID: threadID,
+                  threadName: "Migrated Group",
+                  status: "approved",
+                  migratedAt: new Date().toISOString(),
+                  settings: { allowCommands: true }
+                });
+              }
+            });
+          }
+          
+          // Migrate pending groups
+          if (config.APPROVAL.pendingGroups) {
+            config.APPROVAL.pendingGroups.forEach(threadID => {
+              if (!this.getData(threadID)) {
+                this.setData(threadID, {
+                  threadID: threadID,
+                  threadName: "Migrated Group",
+                  status: "pending",
+                  migratedAt: new Date().toISOString(),
+                  settings: { allowCommands: false }
+                });
+              }
+            });
+          }
+          
+          // Migrate rejected groups
+          if (config.APPROVAL.rejectedGroups) {
+            config.APPROVAL.rejectedGroups.forEach(threadID => {
+              if (!this.getData(threadID)) {
+                this.setData(threadID, {
+                  threadID: threadID,
+                  threadName: "Migrated Group",
+                  status: "rejected",
+                  migratedAt: new Date().toISOString(),
+                  settings: { allowCommands: false }
+                });
+              }
+            });
+          }
+        }
+        
+        // Migrate auto approve settings
+        if (config.AUTO_APPROVE) {
+          this.updateSettings({
+            autoApprove: {
+              enabled: config.AUTO_APPROVE.enabled || true,
+              autoApproveMessage: config.AUTO_APPROVE.autoApproveMessage || false
+            }
+          });
+        }
+        
+        console.log("✅ Migration from config.json completed successfully!");
+        return true;
+      } catch (error) {
+        console.error("Error migrating from config:", error);
+        return false;
+      }
     }
   };
   
-  // Auto sync on initialization
+  // Auto migrate on initialization
   setTimeout(() => {
-    Groups.syncWithConfig();
+    Groups.migrateFromConfig();
   }, 1000);
   
   return Groups;

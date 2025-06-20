@@ -1,93 +1,53 @@
-
 const fs = require('fs');
 const path = require('path');
 
 module.exports.config = {
   name: "groupApprovalCheck",
   eventType: ["message"],
-  version: "2.0.0",
+  version: "1.0.0",
   credits: "TOHI-BOT-HUB",
-  description: "Advanced group approval system with database integration"
+  description: "Check if group is approved before allowing commands"
 };
 
 module.exports.run = async function({ api, event, Groups }) {
   try {
-    // Only check for group messages (not personal messages)
-    if (!event.threadID || event.threadID === event.senderID) return;
-    
-    // Skip if message doesn't start with prefix
-    const prefix = global.config.PREFIX || "/";
+    const { threadID, isGroup } = event;
+
+    // Only check for group messages
+    if (!isGroup) return;
+
+    const prefix = global.config.PREFIX || '*';
+
+    // Check if message starts with prefix (is a command)
     if (!event.body || !event.body.startsWith(prefix)) return;
-    
-    const threadID = String(event.threadID);
-    const senderID = String(event.senderID);
-    const isOwner = global.config.ADMINBOT && global.config.ADMINBOT.includes(senderID);
-    
-    // Initialize Groups if not available
-    if (!Groups) {
-      Groups = require('../../includes/database/groups')({ api });
-    }
-    
+
     // Check group approval status
     const isApproved = Groups.isApproved(threadID);
     const isPending = Groups.isPending(threadID);
     const isRejected = Groups.isRejected(threadID);
-    
-    // If group is not approved
-    if (!isApproved) {
-      const command = event.body.split(' ')[0].substring(1).toLowerCase();
-      
-      // Allow approve command for owners, block everything else
-      if (isOwner && command === 'approve') {
-        return; // Let approve command pass through for owners
-      }
-      
-      // Block all other commands for everyone else
-      if (!isOwner || command !== 'approve') {
-        // Don't send duplicate messages, just block silently
-        return;
-      }
-      
-      // Block all other commands
-      if (isPending) {
-        // Get group data for better message
-        const groupData = Groups.getData(threadID);
-        const groupName = groupData ? groupData.threadName : "Unknown Group";
-        
-        api.sendMessage(
-          `⏳ গ্রুপ "${groupName}" এখনো approve করা হয়নি।\n\n` +
-          `🚫 Bot এর কোনো command কাজ করবে না।\n` +
-          `⏰ Admin approval এর জন্য অপেক্ষা করুন।\n\n` +
-          `📊 Status: Pending Approval\n` +
-          `🆔 Group ID: ${threadID}\n` +
-          `👑 Bot Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}`,
-          event.threadID
-        );
-      } else if (isRejected) {
-        api.sendMessage(
-          `❌ এই গ্রুপটি reject করা হয়েছে।\n\n` +
-          `🚫 Bot এর কোনো command কাজ করবে না।\n` +
-          `📞 Admin এর সাথে যোগাযোগ করুন।\n\n` +
-          `📊 Status: Rejected\n` +
-          `👑 Bot Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}`,
-          event.threadID
-        );
-      } else {
-        // Group is not in any list - add to pending
+
+    if (isRejected) {
+      // Group is rejected - bot should leave or stay silent
+      return;
+    } else if (isPending || !isApproved) {
+      // Group is not approved yet
+      let groupData = Groups.getData(threadID);
+
+      if (!groupData) {
+        // Create group data if doesn't exist
         try {
-          const groupData = await Groups.createData(threadID);
+          groupData = await Groups.createData(threadID);
           Groups.addToPending(threadID);
-          
+
           api.sendMessage(
-            `⏳ নতুন গ্রুপ detect হয়েছে!\n\n` +
-            `📝 Group: ${groupData ? groupData.threadName : 'Unknown'}\n` +
-            `🆔 ID: ${threadID}\n` +
+            `⚠️ এই গ্রুপটি এখনো approve করা হয়নি!\n\n` +
+            `🆔 Group ID: ${threadID}\n` +
             `📊 Status: Pending Approval\n\n` +
             `🚫 Bot commands কাজ করবে না যতক্ষণ না approve হয়।\n` +
             `👑 Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}`,
             event.threadID
           );
-          
+
           // Notify admin
           if (global.config.ADMINBOT && global.config.ADMINBOT[0]) {
             api.sendMessage(
@@ -95,7 +55,7 @@ module.exports.run = async function({ api, event, Groups }) {
               `📝 Group: ${groupData ? groupData.threadName : 'Unknown'}\n` +
               `🆔 ID: ${threadID}\n` +
               `👥 Members: ${groupData ? groupData.memberCount : 0}\n\n` +
-              `✅ Approve: ${prefix}approve\n` +
+              `✅ Approve: ${prefix}approve ${threadID}\n` +
               `❌ Reject: ${prefix}approve reject ${threadID}`,
               global.config.ADMINBOT[0]
             );
@@ -103,22 +63,27 @@ module.exports.run = async function({ api, event, Groups }) {
         } catch (error) {
           console.error('Error handling new group:', error);
         }
+      } else {
+        // Group exists but not approved
+        api.sendMessage(
+          `🚫 এই গ্রুপটি এখনো approve করা হয়নি!\n\n` +
+          `📊 Status: ${groupData.status}\n` +
+          `⏰ Admin approval এর জন্য অপেক্ষা করুন।\n\n` +
+          `👑 Bot Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}`,
+          event.threadID
+        );
       }
-    } else if (isApproved) {
-      // Group is approved - ensure data is up to date
-      try {
-        const groupData = Groups.getData(threadID);
-        if (!groupData || !groupData.settings || !groupData.settings.allowCommands) {
-          Groups.setData(threadID, {
-            settings: { allowCommands: true, autoApprove: false }
-          });
-        }
-      } catch (error) {
-        console.error('Error updating approved group data:', error);
-      }
+
+      // Prevent command execution
+      event.preventDefault = true;
+      return false;
     }
-    
+
+    // Group is approved - allow command execution
+    return true;
+
   } catch (error) {
-    console.error('Group approval check error:', error);
+    console.error('Error in groupApprovalCheck:', error);
+    return true; // Allow command execution on error to prevent bot from breaking
   }
 };
