@@ -123,27 +123,26 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         approvalConfig.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
       }
 
-      // For group chats, check if group is approved (more permissive)
+      // For group chats, check if group is approved (very permissive now)
       if (event.threadID && event.threadID !== event.senderID) {
         const isApproved = approvalConfig.APPROVAL.approvedGroups.includes(String(event.threadID));
+        const isRejected = approvalConfig.APPROVAL.rejectedGroups.includes(String(event.threadID));
         const isOwner = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
 
         // Parse command early
         const messageBody = event.body || "";
-        const prefix = global.config.PREFIX || ".";
+        const prefix = global.config.PREFIX || "+";
         const commandName = messageBody.substring(prefix.length).split(' ')[0].toLowerCase();
 
-        // If group is not approved
-        if (!isApproved) {
-          // Allow admin commands for owners, and be more permissive for debugging
-          if (isOwner || ["approve", "help", "info", "ping"].includes(commandName)) {
-            // Let these commands pass through
-          } else {
-            // For debugging, log but don't block
-            logger.log(`Command ${commandName} used in unapproved group ${event.threadID}`, "DEBUG");
-            // Temporarily allow all commands for debugging
-            // return;
-          }
+        // Only block if explicitly rejected and not owner
+        if (isRejected && !isOwner) {
+          logger.log(`Command ${commandName} blocked in rejected group ${event.threadID}`, "DEBUG");
+          return;
+        }
+
+        // Allow all other cases (approved, unapproved, owner commands)
+        if (!isApproved && !isOwner) {
+          logger.log(`Command ${commandName} used in unapproved group ${event.threadID} - allowing`, "DEBUG");
         }
       }
 

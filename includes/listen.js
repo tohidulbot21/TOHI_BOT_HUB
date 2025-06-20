@@ -21,7 +21,7 @@ module.exports = function ({ api }) {
   } catch (e) {
     botSettings = {
       SAFETY_MODE: true,
-      RATE_LIMITING: { ENABLED: true, MIN_MESSAGE_INTERVAL: 5000 },
+      RATE_LIMITING: { ENABLED: false, MIN_MESSAGE_INTERVAL: 1000 }, // More permissive
       ERROR_HANDLING: { SILENT_FAILURES: true }
     };
   }
@@ -119,13 +119,16 @@ module.exports = function ({ api }) {
     logger.log(`Handler loading error: ${error.message}`, "ERROR");
   }
 
-  // Enhanced approval system
+  // Much more permissive approval system
   function checkApproval(event) {
-    // Always allow non-group messages
+    // Always allow non-group messages and admin messages
     if (!event.threadID || event.threadID === event.senderID) return true;
     
     const threadID = String(event.threadID);
     const isAdmin = global.config.ADMINBOT?.includes(event.senderID);
+    
+    // Allow all admins
+    if (isAdmin) return true;
     
     // Load config safely
     let config = {};
@@ -137,18 +140,19 @@ module.exports = function ({ api }) {
     }
     
     const isApproved = config.APPROVAL?.approvedGroups?.includes(threadID);
+    const isRejected = config.APPROVAL?.rejectedGroups?.includes(threadID);
     
-    // Allow if admin or approved (remove rejection check for now)
-    return isAdmin || isApproved || true; // Temporarily allow all groups
+    // More permissive: Allow approved groups and temporarily allow unapproved groups
+    return isApproved || !isRejected; // Only block explicitly rejected groups
   }
 
-  // Rate limiting function
+  // Much more lenient rate limiting
   function checkRateLimit(userID, commandName = null) {
     if (!botSettings.RATE_LIMITING?.ENABLED) return true;
     
     const now = Date.now();
     const lastActivity = userLastActivity.get(userID) || 0;
-    const minInterval = botSettings.RATE_LIMITING.MIN_MESSAGE_INTERVAL || 2000; // Reduced from 5000 to 2000
+    const minInterval = botSettings.RATE_LIMITING.MIN_MESSAGE_INTERVAL || 500; // Very short interval
     
     if (now - lastActivity < minInterval) {
       return false;
@@ -158,22 +162,19 @@ module.exports = function ({ api }) {
     return true;
   }
 
-  // Enhanced error handler
+  // Enhanced error handler - less strict
   function handleError(error, context = "Unknown") {
     if (!error) return;
     
     const errorStr = error.toString().toLowerCase();
     
-    // Ignore common errors
+    // Only ignore very common/harmless errors
     const ignorableErrors = [
-      'rate limit',
+      'rate limit exceeded',
       'enoent',
-      'network',
       'timeout',
       'connection reset',
-      'does not exist in database',
-      'you can\'t use this feature',
-      'took too long to execute'
+      'typ', 'typing', 'presence'
     ];
     
     if (ignorableErrors.some(err => errorStr.includes(err))) {
@@ -183,7 +184,7 @@ module.exports = function ({ api }) {
     logger.log(`${context} error: ${error.message}`, "DEBUG");
   }
 
-  // Main event handler
+  // Main event handler - much more permissive
   return async (event) => {
     try {
       if (!event || !event.type) return;
@@ -191,16 +192,19 @@ module.exports = function ({ api }) {
       // Skip ready events
       if (event.type === 'ready') return;
       
-      // More permissive approval check
-      if (event.threadID && event.threadID !== event.senderID && !checkApproval(event)) {
-        // Only log for debugging, don't return
-        logger.log(`Group ${event.threadID} not approved, but allowing for debugging`, "DEBUG");
+      // Very permissive approval check - mainly for logging
+      if (event.threadID && event.threadID !== event.senderID) {
+        const approved = checkApproval(event);
+        if (!approved) {
+          // Log but don't block for debugging
+          logger.log(`Group ${event.threadID} not fully approved, but allowing`, "DEBUG");
+        }
       }
       
-      // Less restrictive rate limiting
+      // Very lenient rate limiting - mostly disabled
       if (!checkRateLimit(event.senderID)) {
-        logger.log(`Rate limit hit for user ${event.senderID}`, "DEBUG");
-        // Don't return, just log
+        // Don't block, just log
+        logger.log(`Rate limit notice for user ${event.senderID}`, "DEBUG");
       }
       
       const listenObj = { event };
@@ -211,6 +215,7 @@ module.exports = function ({ api }) {
         case "message_reply":
         case "message_unsend":
           try {
+            // Always try to execute commands
             await Promise.allSettled([
               handlers.handleCreateDatabase?.(listenObj),
               handlers.handleCommand?.(listenObj),
@@ -218,7 +223,8 @@ module.exports = function ({ api }) {
               handlers.handleCommandEvent?.(listenObj)
             ]);
           } catch (handlerError) {
-            logger.log(`Message handler error: ${handlerError.message}`, "DEBUG");
+            // Don't block on handler errors
+            logger.log(`Message handler issue: ${handlerError.message}`, "DEBUG");
           }
           break;
           
@@ -229,32 +235,34 @@ module.exports = function ({ api }) {
               handlers.handleRefresh?.(listenObj)
             ]);
           } catch (eventError) {
-            logger.log(`Event handler error: ${eventError.message}`, "DEBUG");
+            logger.log(`Event handler issue: ${eventError.message}`, "DEBUG");
           }
           break;
           
         case "message_reaction":
           if (handlers.handleReaction) {
             await handlers.handleReaction(listenObj).catch(error => 
-              logger.log(`Reaction handler error: ${error.message}`, "DEBUG")
+              logger.log(`Reaction handler issue: ${error.message}`, "DEBUG")
             );
           }
           break;
           
         case "change_thread_image":
-          // Handle silently
+        case "typ":
+        case "typing":
+        case "presence":
+          // Handle silently - these are normal Facebook events
           break;
           
         default:
-          // Ignore common Facebook events that don't need handling
-          if (event.type !== "typ" && event.type !== "typing" && event.type !== "presence") {
-            logger.log(`Unknown event type: ${event.type}`, "DEBUG");
-          }
+          // Log unknown events for debugging but don't treat as errors
+          logger.log(`Unknown event type: ${event.type}`, "DEBUG");
           break;
       }
       
     } catch (error) {
-      logger.log(`Main event handler error: ${error.message}`, "ERROR");
+      // Don't let main handler errors stop the bot
+      logger.log(`Main event handler issue: ${error.message}`, "DEBUG");
     }
   };
 };
