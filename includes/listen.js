@@ -119,7 +119,7 @@ module.exports = function ({ api }) {
     logger.log(`Handler loading error: ${error.message}`, "ERROR");
   }
 
-  // Much more permissive approval system
+  // Strict approval system - only approved groups allowed
   function checkApproval(event) {
     // Always allow non-group messages and admin messages
     if (!event.threadID || event.threadID === event.senderID) return true;
@@ -142,8 +142,8 @@ module.exports = function ({ api }) {
     const isApproved = config.APPROVAL?.approvedGroups?.includes(threadID);
     const isRejected = config.APPROVAL?.rejectedGroups?.includes(threadID);
     
-    // More permissive: Allow approved groups and temporarily allow unapproved groups
-    return isApproved || !isRejected; // Only block explicitly rejected groups
+    // Strict: Only allow approved groups (reject all others except admins)
+    return isApproved && !isRejected;
   }
 
   // Much more lenient rate limiting

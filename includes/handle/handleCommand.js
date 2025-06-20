@@ -123,7 +123,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         approvalConfig.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
       }
 
-      // For group chats, check if group is approved (very permissive now)
+      // For group chats, check if group is approved (strict approval system)
       if (event.threadID && event.threadID !== event.senderID) {
         const isApproved = approvalConfig.APPROVAL.approvedGroups.includes(String(event.threadID));
         const isRejected = approvalConfig.APPROVAL.rejectedGroups.includes(String(event.threadID));
@@ -134,15 +134,35 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         const prefix = global.config.PREFIX || "+";
         const commandName = messageBody.substring(prefix.length).split(' ')[0].toLowerCase();
 
-        // Only block if explicitly rejected and not owner
+        // Allow only approve command for owners in unapproved groups
+        const isApproveCommand = commandName === "approve";
+
+        // Block rejected groups completely (except owners)
         if (isRejected && !isOwner) {
           logger.log(`Command ${commandName} blocked in rejected group ${event.threadID}`, "DEBUG");
           return;
         }
 
-        // Allow all other cases (approved, unapproved, owner commands)
+        // Block unapproved groups (except owners and approve command)
         if (!isApproved && !isOwner) {
-          logger.log(`Command ${commandName} used in unapproved group ${event.threadID} - allowing`, "DEBUG");
+          if (!isApproveCommand) {
+            // Send notification only once per group per session
+            if (!global.notifiedGroups) global.notifiedGroups = new Set();
+            
+            if (!global.notifiedGroups.has(event.threadID)) {
+              api.sendMessage(
+                `⚠️ এই গ্রুপটি এখনো approve করা হয়নি!\n\n` +
+                `🚫 Bot commands কাজ করবে না যতক্ষণ না admin approve করে।\n` +
+                `👑 Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}\n\n` +
+                `📋 Group ID: ${event.threadID}`,
+                event.threadID
+              );
+              global.notifiedGroups.add(event.threadID);
+            }
+            
+            logger.log(`Command ${commandName} blocked in unapproved group ${event.threadID}`, "DEBUG");
+            return;
+          }
         }
       }
 
