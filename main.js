@@ -425,11 +425,11 @@ function initializeBot() {
 
     // Save appstate
     try {
-      const currentState = api.getAppState();
+      const currentState = await Promise.resolve(api.getAppState());
       let stateData = JSON.stringify(currentState, null, 2);
 
       if ((process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER) && global.config.encryptSt) {
-        stateData = global.utils.encryptState(stateData, process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER);
+        stateData = await global.utils.encryptState(stateData, process.env.REPL_OWNER || process.env.PROCESSOR_IDENTIFIER);
       }
 
       fs.writeFileSync(appStateFile, stateData);
