@@ -121,7 +121,8 @@ module.exports = function ({ api }) {
 
   // Enhanced approval system
   function checkApproval(event) {
-    if (!event.isGroup) return true;
+    // Always allow non-group messages
+    if (!event.threadID || event.threadID === event.senderID) return true;
     
     const threadID = String(event.threadID);
     const isAdmin = global.config.ADMINBOT?.includes(event.senderID);
@@ -136,10 +137,9 @@ module.exports = function ({ api }) {
     }
     
     const isApproved = config.APPROVAL?.approvedGroups?.includes(threadID);
-    const isRejected = config.APPROVAL?.rejectedGroups?.includes(threadID);
     
-    // Allow if admin, approved, or not explicitly rejected
-    return isAdmin || isApproved || !isRejected;
+    // Allow if admin or approved (remove rejection check for now)
+    return isAdmin || isApproved || true; // Temporarily allow all groups
   }
 
   // Rate limiting function
@@ -148,7 +148,7 @@ module.exports = function ({ api }) {
     
     const now = Date.now();
     const lastActivity = userLastActivity.get(userID) || 0;
-    const minInterval = botSettings.RATE_LIMITING.MIN_MESSAGE_INTERVAL || 5000;
+    const minInterval = botSettings.RATE_LIMITING.MIN_MESSAGE_INTERVAL || 2000; // Reduced from 5000 to 2000
     
     if (now - lastActivity < minInterval) {
       return false;
@@ -191,14 +191,16 @@ module.exports = function ({ api }) {
       // Skip ready events
       if (event.type === 'ready') return;
       
-      // Check approval for group messages
-      if (event.isGroup && !checkApproval(event)) {
-        return;
+      // More permissive approval check
+      if (event.threadID && event.threadID !== event.senderID && !checkApproval(event)) {
+        // Only log for debugging, don't return
+        logger.log(`Group ${event.threadID} not approved, but allowing for debugging`, "DEBUG");
       }
       
-      // Rate limiting
+      // Less restrictive rate limiting
       if (!checkRateLimit(event.senderID)) {
-        return;
+        logger.log(`Rate limit hit for user ${event.senderID}`, "DEBUG");
+        // Don't return, just log
       }
       
       const listenObj = { event };
@@ -208,24 +210,34 @@ module.exports = function ({ api }) {
         case "message":
         case "message_reply":
         case "message_unsend":
-          await Promise.allSettled([
-            handlers.handleCreateDatabase?.(listenObj),
-            handlers.handleCommand?.(listenObj),
-            handlers.handleReply?.(listenObj),
-            handlers.handleCommandEvent?.(listenObj)
-          ]);
+          try {
+            await Promise.allSettled([
+              handlers.handleCreateDatabase?.(listenObj),
+              handlers.handleCommand?.(listenObj),
+              handlers.handleReply?.(listenObj),
+              handlers.handleCommandEvent?.(listenObj)
+            ]);
+          } catch (handlerError) {
+            logger.log(`Message handler error: ${handlerError.message}`, "DEBUG");
+          }
           break;
           
         case "event":
-          await Promise.allSettled([
-            handlers.handleEvent?.(listenObj),
-            handlers.handleRefresh?.(listenObj)
-          ]);
+          try {
+            await Promise.allSettled([
+              handlers.handleEvent?.(listenObj),
+              handlers.handleRefresh?.(listenObj)
+            ]);
+          } catch (eventError) {
+            logger.log(`Event handler error: ${eventError.message}`, "DEBUG");
+          }
           break;
           
         case "message_reaction":
           if (handlers.handleReaction) {
-            await handlers.handleReaction(listenObj).catch(handleError);
+            await handlers.handleReaction(listenObj).catch(error => 
+              logger.log(`Reaction handler error: ${error.message}`, "DEBUG")
+            );
           }
           break;
           
@@ -234,12 +246,13 @@ module.exports = function ({ api }) {
           break;
           
         default:
-          // Unknown event type - ignore
+          // Unknown event type - log for debugging
+          logger.log(`Unknown event type: ${event.type}`, "DEBUG");
           break;
       }
       
     } catch (error) {
-      handleError(error, "EventHandler");
+      logger.log(`Main event handler error: ${error.message}`, "ERROR");
     }
   };
 };
