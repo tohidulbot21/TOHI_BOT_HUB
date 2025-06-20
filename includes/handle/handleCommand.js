@@ -106,27 +106,13 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
       const { commands } = global.client;
       const { threadID, messageID, senderID, isGroup } = event;
 
-      // Check if group is approved before executing any commands
-      const fs = require('fs');
-      const configPath = require('path').join(__dirname, '../../config.json');
-      let approvalConfig = {};
-
-      try {
-        const configData = fs.readFileSync(configPath, 'utf8');
-        approvalConfig = JSON.parse(configData);
-      } catch (error) {
-        approvalConfig = { APPROVAL: { approvedGroups: [] } };
-      }
-
-      // Initialize approval system if not exists
-      if (!approvalConfig.APPROVAL) {
-        approvalConfig.APPROVAL = { approvedGroups: [], pendingGroups: [], rejectedGroups: [] };
-      }
+      // Check if group is approved before executing any commands using new Groups system
+      const Groups = require('../database/groups')({ api: global.client.api });
 
       // For group chats, check if group is approved (strict approval system)
       if (event.threadID && event.threadID !== event.senderID) {
-        const isApproved = approvalConfig.APPROVAL.approvedGroups.includes(String(event.threadID));
-        const isRejected = approvalConfig.APPROVAL.rejectedGroups.includes(String(event.threadID));
+        const isApproved = Groups.isApproved(event.threadID);
+        const isRejected = Groups.isRejected(event.threadID);
         const isOwner = global.config.ADMINBOT && global.config.ADMINBOT.includes(event.senderID);
 
         // Parse command early

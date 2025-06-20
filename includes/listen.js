@@ -130,17 +130,11 @@ module.exports = function ({ api }) {
     // Allow all admins
     if (isAdmin) return true;
     
-    // Load config safely
-    let config = {};
-    try {
-      delete require.cache[require.resolve("../config.json")];
-      config = require("../config.json");
-    } catch (e) {
-      config = { APPROVAL: { approvedGroups: [], rejectedGroups: [] } };
-    }
+    // Use new Groups system
+    const Groups = require("./database/groups")({ api });
     
-    const isApproved = config.APPROVAL?.approvedGroups?.includes(threadID);
-    const isRejected = config.APPROVAL?.rejectedGroups?.includes(threadID);
+    const isApproved = Groups.isApproved(threadID);
+    const isRejected = Groups.isRejected(threadID);
     
     // Strict: Only allow approved groups (reject all others except admins)
     return isApproved && !isRejected;

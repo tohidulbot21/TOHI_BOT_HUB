@@ -19,23 +19,10 @@ module.exports.run = async function ({ api, event, args }) {
   }
 
   const { threadID, messageID } = event;
-  const { configPath } = global.client;
-  const { writeFileSync } = global.nodemodule["fs-extra"];
-
-  // Load config
-  delete require.cache[require.resolve(configPath)];
-  var config = require(configPath);
   const Groups = require('../../includes/database/groups')({ api });
 
-  // Initialize APPROVAL system
-  if (!config.APPROVAL) {
-    config.APPROVAL = { 
-      approvedGroups: [], 
-      pendingGroups: [], 
-      rejectedGroups: [] 
-    };
-    writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
-  }
+  // Initialize Groups system (migration will happen automatically)
+  Groups.migrateFromConfig();
 
   const command = (args[0] || "").toLowerCase();
 
@@ -55,7 +42,7 @@ module.exports.run = async function ({ api, event, args }) {
       }
 
       case "list": {
-        const { approvedGroups = [] } = config.APPROVAL;
+        const approvedGroups = Groups.getByStatus('approved');
 
         if (approvedGroups.length === 0) {
           return api.sendMessage("📝 কোনো approved গ্রুপ নেই!", threadID, messageID);
@@ -64,15 +51,11 @@ module.exports.run = async function ({ api, event, args }) {
         let msg = `✅ APPROVED GROUPS (${approvedGroups.length}):\n\n`;
 
         for (let i = 0; i < Math.min(approvedGroups.length, 15); i++) {
-          try {
-            const info = await api.getThreadInfo(approvedGroups[i]);
-            msg += `${i + 1}. ${info.threadName}\n`;
-            msg += `   🆔 ${approvedGroups[i]}\n`;
-            msg += `   👥 ${info.participantIDs.length} members\n\n`;
-          } catch {
-            msg += `${i + 1}. [তথ্য পাওয়া যায়নি]\n`;
-            msg += `   🆔 ${approvedGroups[i]}\n\n`;
-          }
+          const group = approvedGroups[i];
+          msg += `${i + 1}. ${group.threadName || 'Unknown Group'}\n`;
+          msg += `   🆔 ${group.threadID}\n`;
+          msg += `   👥 ${group.memberCount || 0} members\n`;
+          msg += `   📅 Approved: ${new Date(group.approvedAt || group.lastUpdated).toLocaleDateString('bn-BD')}\n\n`;
         }
 
         if (approvedGroups.length > 15) {
