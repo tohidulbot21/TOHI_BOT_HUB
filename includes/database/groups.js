@@ -175,32 +175,38 @@ module.exports = function({ api }) {
 
     // Check if group is approved
     isApproved: function(threadID) {
-    try {
-      const data = this.getData(threadID);
+      try {
+        const data = this.getData(threadID);
 
-      // If no data exists, check legacy config.json approval system
-      if (!data) {
-        const { configPath } = global.client;
-        if (configPath) {
-          delete require.cache[require.resolve(configPath)];
-          const config = require(configPath);
+        // If no data exists, check legacy config.json approval system
+        if (!data) {
+          try {
+            const configPath = require('path').join(__dirname, '../../config.json');
+            delete require.cache[require.resolve(configPath)];
+            const config = require(configPath);
 
-          if (config.APPROVAL?.approvedGroups?.includes(String(threadID))) {
-            // Create data entry for approved group
-            this.createData(threadID);
-            this.approveGroup(threadID);
-            return true;
+            if (config.APPROVAL?.approvedGroups?.includes(String(threadID))) {
+              // Create data entry for approved group and migrate
+              this.createData(threadID).then(() => {
+                this.approveGroup(threadID);
+              });
+              return true;
+            }
+          } catch (configError) {
+            console.log(`Config check error for ${threadID}:`, configError.message);
           }
+          return false;
         }
+
+        // Check status
+        const isApproved = data.status === 'approved';
+        console.log(`Group ${threadID} approval status: ${data.status} (${isApproved})`);
+        return isApproved;
+      } catch (error) {
+        console.log(`Error checking approval for ${threadID}:`, error.message);
         return false;
       }
-
-      return data.status === 'approved';
-    } catch (error) {
-      console.log(`Error checking approval for ${threadID}:`, error.message);
-      return false;
-    }
-  },
+    },
 
     // Check if group is pending
     isPending: function(threadID) {
