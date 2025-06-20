@@ -73,7 +73,21 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         return;
       }
     } catch (error) {
-      throw error;
+      // Enhanced error handling with better categorization
+      const errorMessage = error.message || error.toString();
+
+      // Ignore common harmless errors silently
+      const ignorableErrors = [
+        'rate limit', 'rate', 'ENOENT', 'not found', 'timeout', 'TIMEOUT',
+        'Permission', 'banned', 'not allowed', 'couldn\'t send', 'error: 3370026'
+      ];
+
+      if (ignorableErrors.some(err => errorMessage.toLowerCase().includes(err.toLowerCase()))) {
+        return; // Silent handling for common errors
+      }
+
+      // Only log genuine unexpected errors
+      logger.log(`Command execution error [${commandName}]: ${errorMessage}`, "DEBUG");
     }
   }
 

@@ -243,12 +243,25 @@ module.exports = function ({ api }) {
         case "delivery_receipt":
         case "read":
         case "delivered":
+        case "read_receipt":
+        case "delivery":
+        case "message_seen":
+        case "seen":
+        case "notification_messages":
+        case "buddylist_overlay":
+        case "inbox":
+        case "pages_messaging":
+        case "jewel_requests_add":
+        case "mobile_requests_count":
+        case "notifications_seen":
+        case "notifications_sound":
+        case "mark_seen":
           // Handle silently - these are normal Facebook events
-          break;
+          return; // Exit early to prevent any processing
           
         default:
           // Silently ignore unknown event types to reduce spam
-          break;
+          return;
       }
       
     } catch (error) {
