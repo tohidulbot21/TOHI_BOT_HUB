@@ -31,14 +31,7 @@
     "autoApproveMessage": false
   },
   "APPROVAL": {
-    "approvedGroups": [
-      "29215999454712506",
-      "8691975704250419",
-      "24135804796027468",
-      "28955540137378384",
-      "9147862888601670",
-      "6601227983317461"
-    ],
+    "approvedGroups": [],
     "pendingGroups": [],
     "rejectedGroups": []
   },
