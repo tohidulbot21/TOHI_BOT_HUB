@@ -1,4 +1,12 @@
-const { loadImage, createCanvas } = require("canvas");
+let canvas, loadImage, createCanvas;
+try {
+  const canvasModule = require("canvas");
+  loadImage = canvasModule.loadImage;
+  createCanvas = canvasModule.createCanvas;
+} catch (error) {
+  console.log("Canvas module not available:", error.message);
+}
+
 const fs = require("fs-extra");
 const axios = require("axios");
 
@@ -46,6 +54,9 @@ module.exports = {
   },
 
   onStart: async function ({ args, usersData, threadsData, api, event }) {
+    if (!createCanvas || !loadImage) {
+      return api.sendMessage("❌ Canvas dependencies not available. Please contact admin.", event.threadID, event.messageID);
+    }
     let pathImg = __dirname + "/cache/background.png";
     let pathAvt1 = __dirname + "/cache/Avtmot.png";
     var id = Object.keys(event.mentions)[0] || event.senderID;
