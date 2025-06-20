@@ -1,7 +1,5 @@
 const axios = require('axios');
-const { loadImage, createCanvas } = require('canvas');
 const fs = require("fs");
-const jimp = require('jimp');
 
 module.exports.config = {
   name: "fbcover",
