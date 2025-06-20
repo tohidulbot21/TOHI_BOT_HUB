@@ -2013,7 +2013,8 @@
         "data": {
             "timestamp": 1749535939259
         },
-        "lastUpdate": 1749535939259
+        "lastUpdate": 1749535939259,
+        "name": "MW Legends Discord Bot"
     },
     "61576594168632": {
         "userID": "61576594168632",
@@ -2500,5 +2501,605 @@
         },
         "lastUpdate": 1750344600708,
         "name": "〲Arish আহমেদ Tushar㐃"
+    },
+    "61556130727996": {
+        "userID": "61556130727996",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403615
+        },
+        "data": {
+            "timestamp": 1750406403615
+        },
+        "lastUpdate": 1750406403615
+    },
+    "61557066219805": {
+        "userID": "61557066219805",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403618
+        },
+        "data": {
+            "timestamp": 1750406403618
+        },
+        "lastUpdate": 1750406403618
+    },
+    "61557212103676": {
+        "userID": "61557212103676",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403620
+        },
+        "data": {
+            "timestamp": 1750406403620
+        },
+        "lastUpdate": 1750406403620
+    },
+    "61557991874813": {
+        "userID": "61557991874813",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403623
+        },
+        "data": {
+            "timestamp": 1750406403623
+        },
+        "lastUpdate": 1750406403623
+    },
+    "61558432342109": {
+        "userID": "61558432342109",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403625
+        },
+        "data": {
+            "timestamp": 1750406403625
+        },
+        "lastUpdate": 1750406403625
+    },
+    "61560303410209": {
+        "userID": "61560303410209",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403628
+        },
+        "data": {
+            "timestamp": 1750406403628
+        },
+        "lastUpdate": 1750406403628
+    },
+    "61561359566206": {
+        "userID": "61561359566206",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403631
+        },
+        "data": {
+            "timestamp": 1750406403631
+        },
+        "lastUpdate": 1750406403631
+    },
+    "61562605717961": {
+        "userID": "61562605717961",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403633
+        },
+        "data": {
+            "timestamp": 1750406403633
+        },
+        "lastUpdate": 1750406403633
+    },
+    "61562807533086": {
+        "userID": "61562807533086",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403636
+        },
+        "data": {
+            "timestamp": 1750406403636
+        },
+        "lastUpdate": 1750406403636
+    },
+    "61564160504731": {
+        "userID": "61564160504731",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403639
+        },
+        "data": {
+            "timestamp": 1750406403639
+        },
+        "lastUpdate": 1750406403639
+    },
+    "61564301005105": {
+        "userID": "61564301005105",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403643
+        },
+        "data": {
+            "timestamp": 1750406403643
+        },
+        "lastUpdate": 1750406403643
+    },
+    "61567031991761": {
+        "userID": "61567031991761",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403645
+        },
+        "data": {
+            "timestamp": 1750406403645
+        },
+        "lastUpdate": 1750406403645
+    },
+    "61567543834066": {
+        "userID": "61567543834066",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403647
+        },
+        "data": {
+            "timestamp": 1750406403647
+        },
+        "lastUpdate": 1750406403647
+    },
+    "61568221873844": {
+        "userID": "61568221873844",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403649
+        },
+        "data": {
+            "timestamp": 1750406403649
+        },
+        "lastUpdate": 1750406403649
+    },
+    "61568426151223": {
+        "userID": "61568426151223",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403654
+        },
+        "data": {
+            "timestamp": 1750406403654
+        },
+        "lastUpdate": 1750406403654
+    },
+    "61573725647723": {
+        "userID": "61573725647723",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403656
+        },
+        "data": {
+            "timestamp": 1750406403656
+        },
+        "lastUpdate": 1750406403656
+    },
+    "61575148453165": {
+        "userID": "61575148453165",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403660
+        },
+        "data": {
+            "timestamp": 1750406403660
+        },
+        "lastUpdate": 1750406403660
+    },
+    "61575259087954": {
+        "userID": "61575259087954",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403669
+        },
+        "data": {
+            "timestamp": 1750406403669
+        },
+        "lastUpdate": 1750406403669
+    },
+    "61575853273856": {
+        "userID": "61575853273856",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403674
+        },
+        "data": {
+            "timestamp": 1750406403674
+        },
+        "lastUpdate": 1750406403674
+    },
+    "61576479898594": {
+        "userID": "61576479898594",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403675
+        },
+        "data": {
+            "timestamp": 1750406403675
+        },
+        "lastUpdate": 1750406403675
+    },
+    "61576731812131": {
+        "userID": "61576731812131",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403681
+        },
+        "data": {
+            "timestamp": 1750406403681
+        },
+        "lastUpdate": 1750406403681
+    },
+    "61576892217182": {
+        "userID": "61576892217182",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403682
+        },
+        "data": {
+            "timestamp": 1750406403682
+        },
+        "lastUpdate": 1750406403682
+    },
+    "61577168495697": {
+        "userID": "61577168495697",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403683
+        },
+        "data": {
+            "timestamp": 1750406403683
+        },
+        "lastUpdate": 1750406403683
+    },
+    "100024220812646": {
+        "userID": "100024220812646",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403686
+        },
+        "data": {
+            "timestamp": 1750406403686
+        },
+        "lastUpdate": 1750406403686
+    },
+    "100051685472948": {
+        "userID": "100051685472948",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403690
+        },
+        "data": {
+            "timestamp": 1750406403690
+        },
+        "lastUpdate": 1750406403690
+    },
+    "100056475082077": {
+        "userID": "100056475082077",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403693
+        },
+        "data": {
+            "timestamp": 1750406403693
+        },
+        "lastUpdate": 1750406403693
+    },
+    "100064071097506": {
+        "userID": "100064071097506",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403698
+        },
+        "data": {
+            "timestamp": 1750406403698
+        },
+        "lastUpdate": 1750406403698
+    },
+    "100076114491634": {
+        "userID": "100076114491634",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403702
+        },
+        "data": {
+            "timestamp": 1750406403702
+        },
+        "lastUpdate": 1750406403702
+    },
+    "100081129287199": {
+        "userID": "100081129287199",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403706
+        },
+        "data": {
+            "timestamp": 1750406403706
+        },
+        "lastUpdate": 1750406403706
+    },
+    "100089959465355": {
+        "userID": "100089959465355",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403710
+        },
+        "data": {
+            "timestamp": 1750406403710
+        },
+        "lastUpdate": 1750406403710
+    },
+    "100090493634441": {
+        "userID": "100090493634441",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403712
+        },
+        "data": {
+            "timestamp": 1750406403712
+        },
+        "lastUpdate": 1750406403712
+    },
+    "100090883087503": {
+        "userID": "100090883087503",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403716
+        },
+        "data": {
+            "timestamp": 1750406403716
+        },
+        "lastUpdate": 1750406403716
+    },
+    "100092287694966": {
+        "userID": "100092287694966",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403718
+        },
+        "data": {
+            "timestamp": 1750406403718
+        },
+        "lastUpdate": 1750406403718
+    },
+    "100094086843454": {
+        "userID": "100094086843454",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403720
+        },
+        "data": {
+            "timestamp": 1750406403720
+        },
+        "lastUpdate": 1750406403720
+    },
+    "100092237443707": {
+        "userID": "100092237443707",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403723
+        },
+        "data": {
+            "timestamp": 1750406403723
+        },
+        "lastUpdate": 1750406403723
+    },
+    "61574702716215": {
+        "userID": "61574702716215",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403726
+        },
+        "data": {
+            "timestamp": 1750406403726
+        },
+        "lastUpdate": 1750406403726
+    },
+    "61552553144546": {
+        "userID": "61552553144546",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403729
+        },
+        "data": {
+            "timestamp": 1750406403729
+        },
+        "lastUpdate": 1750406403729
+    },
+    "61559633765629": {
+        "userID": "61559633765629",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403732
+        },
+        "data": {
+            "timestamp": 1750406403732
+        },
+        "lastUpdate": 1750406403732
+    },
+    "61574932814549": {
+        "userID": "61574932814549",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403736
+        },
+        "data": {
+            "timestamp": 1750406403736
+        },
+        "lastUpdate": 1750406403736
+    },
+    "100088304089177": {
+        "userID": "100088304089177",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403742
+        },
+        "data": {
+            "timestamp": 1750406403742
+        },
+        "lastUpdate": 1750406403742
+    },
+    "61575554480117": {
+        "userID": "61575554480117",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403743
+        },
+        "data": {
+            "timestamp": 1750406403743
+        },
+        "lastUpdate": 1750406403743
+    },
+    "61575157085841": {
+        "userID": "61575157085841",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403745
+        },
+        "data": {
+            "timestamp": 1750406403745
+        },
+        "lastUpdate": 1750406403745
+    },
+    "61568787796284": {
+        "userID": "61568787796284",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403747
+        },
+        "data": {
+            "timestamp": 1750406403747
+        },
+        "lastUpdate": 1750406403747
+    },
+    "61575461722555": {
+        "userID": "61575461722555",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403749
+        },
+        "data": {
+            "timestamp": 1750406403749
+        },
+        "lastUpdate": 1750406403749
+    },
+    "61574886789024": {
+        "userID": "61574886789024",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403750
+        },
+        "data": {
+            "timestamp": 1750406403750
+        },
+        "lastUpdate": 1750406403750
+    },
+    "61571550050635": {
+        "userID": "61571550050635",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403752
+        },
+        "data": {
+            "timestamp": 1750406403752
+        },
+        "lastUpdate": 1750406403752
+    },
+    "61575574574881": {
+        "userID": "61575574574881",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403754
+        },
+        "data": {
+            "timestamp": 1750406403754
+        },
+        "lastUpdate": 1750406403754
+    },
+    "61576324584654": {
+        "userID": "61576324584654",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403756
+        },
+        "data": {
+            "timestamp": 1750406403756
+        },
+        "lastUpdate": 1750406403756
+    },
+    "100093683273802": {
+        "userID": "100093683273802",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403757
+        },
+        "data": {
+            "timestamp": 1750406403757
+        },
+        "lastUpdate": 1750406403757
+    },
+    "61574497784897": {
+        "userID": "61574497784897",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750406403758
+        },
+        "data": {
+            "timestamp": 1750406403758
+        },
+        "lastUpdate": 1750406403758
     }
 }
