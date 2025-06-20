@@ -5,12 +5,12 @@ const path = require('path');
 module.exports.config = {
   name: "groupApprovalCheck",
   eventType: ["message"],
-  version: "1.0.0",
+  version: "2.0.0",
   credits: "TOHI-BOT-HUB",
-  description: "Check group approval before allowing any bot interactions"
+  description: "Advanced group approval system with database integration"
 };
 
-module.exports.run = async function({ api, event }) {
+module.exports.run = async function({ api, event, Groups }) {
   try {
     // Only check for group messages (not personal messages)
     if (!event.threadID || event.threadID === event.senderID) return;
@@ -19,24 +19,19 @@ module.exports.run = async function({ api, event }) {
     const prefix = global.config.PREFIX || "/";
     if (!event.body || !event.body.startsWith(prefix)) return;
     
-    const configPath = path.join(__dirname, '../../config.json');
-    let config = {};
-    
-    try {
-      const configData = fs.readFileSync(configPath, 'utf8');
-      config = JSON.parse(configData);
-    } catch (error) {
-      return;
-    }
-    
-    // Initialize approval system if not exists
-    if (!config.APPROVAL) return;
-    
     const threadID = String(event.threadID);
     const senderID = String(event.senderID);
     const isOwner = global.config.ADMINBOT && global.config.ADMINBOT.includes(senderID);
-    const isApproved = config.APPROVAL.approvedGroups.includes(threadID);
-    const isPending = config.APPROVAL.pendingGroups.includes(threadID);
+    
+    // Initialize Groups if not available
+    if (!Groups) {
+      Groups = require('../../includes/database/groups')({ api });
+    }
+    
+    // Check group approval status
+    const isApproved = Groups.isApproved(threadID);
+    const isPending = Groups.isPending(threadID);
+    const isRejected = Groups.isRejected(threadID);
     
     // If group is not approved and sender is not owner
     if (!isApproved && !isOwner) {
@@ -49,24 +44,75 @@ module.exports.run = async function({ api, event }) {
       
       // Block all other commands
       if (isPending) {
+        // Get group data for better message
+        const groupData = Groups.getData(threadID);
+        const groupName = groupData ? groupData.threadName : "Unknown Group";
+        
         api.sendMessage(
-          `⏳ এই গ্রুপটি এখনো approve করা হয়নি।\n\n` +
+          `⏳ গ্রুপ "${groupName}" এখনো approve করা হয়নি।\n\n` +
           `🚫 Bot এর কোনো command কাজ করবে না।\n` +
           `⏰ Admin approval এর জন্য অপেক্ষা করুন।\n\n` +
+          `📊 Status: Pending Approval\n` +
+          `🆔 Group ID: ${threadID}\n` +
+          `👑 Bot Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}`,
+          event.threadID
+        );
+      } else if (isRejected) {
+        api.sendMessage(
+          `❌ এই গ্রুপটি reject করা হয়েছে।\n\n` +
+          `🚫 Bot এর কোনো command কাজ করবে না।\n` +
+          `📞 Admin এর সাথে যোগাযোগ করুন।\n\n` +
+          `📊 Status: Rejected\n` +
           `👑 Bot Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}`,
           event.threadID
         );
       } else {
-        // Group is not even in pending list, might be rejected or new
-        api.sendMessage(
-          `❌ এই গ্রুপে bot এর access নেই।\n\n` +
-          `📞 Admin এর সাথে যোগাযোগ করুন approval এর জন্য।`,
-          event.threadID
-        );
+        // Group is not in any list - add to pending
+        try {
+          const groupData = await Groups.createData(threadID);
+          Groups.addToPending(threadID);
+          
+          api.sendMessage(
+            `⏳ নতুন গ্রুপ detect হয়েছে!\n\n` +
+            `📝 Group: ${groupData ? groupData.threadName : 'Unknown'}\n` +
+            `🆔 ID: ${threadID}\n` +
+            `📊 Status: Pending Approval\n\n` +
+            `🚫 Bot commands কাজ করবে না যতক্ষণ না approve হয়।\n` +
+            `👑 Admin: ${global.config.ADMINBOT?.[0] || 'Unknown'}`,
+            event.threadID
+          );
+          
+          // Notify admin
+          if (global.config.ADMINBOT && global.config.ADMINBOT[0]) {
+            api.sendMessage(
+              `🔔 নতুন গ্রুপ approval এর জন্য অপেক্ষা করছে:\n\n` +
+              `📝 Group: ${groupData ? groupData.threadName : 'Unknown'}\n` +
+              `🆔 ID: ${threadID}\n` +
+              `👥 Members: ${groupData ? groupData.memberCount : 0}\n\n` +
+              `✅ Approve: ${prefix}approve\n` +
+              `❌ Reject: ${prefix}approve reject ${threadID}`,
+              global.config.ADMINBOT[0]
+            );
+          }
+        } catch (error) {
+          console.error('Error handling new group:', error);
+        }
       }
       
       // Block the command by setting a flag
       event.blockCommand = true;
+    } else if (isApproved) {
+      // Group is approved - ensure data is up to date
+      try {
+        const groupData = Groups.getData(threadID);
+        if (!groupData || !groupData.settings || !groupData.settings.allowCommands) {
+          Groups.setData(threadID, {
+            settings: { allowCommands: true, autoApprove: false }
+          });
+        }
+      } catch (error) {
+        console.error('Error updating approved group data:', error);
+      }
     }
     
   } catch (error) {

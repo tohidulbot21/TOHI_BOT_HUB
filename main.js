@@ -729,3 +729,4 @@ process.on('uncaughtException', (error) => {
 
 // Initialize script cleanup utility
 require('./utils/scriptCleanup');
+global.data.groups = require('./includes/database/groups')({ api });

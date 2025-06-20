@@ -1,4 +1,3 @@
-
 module.exports.config = {
   name: "approve",
   version: "6.0.0",
@@ -22,10 +21,11 @@ module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID } = event;
   const { configPath } = global.client;
   const { writeFileSync } = global.nodemodule["fs-extra"];
-  
+
   // Load config
   delete require.cache[require.resolve(configPath)];
   var config = require(configPath);
+  const Groups = require('../../includes/database/groups');
 
   // Initialize APPROVAL system
   if (!config.APPROVAL) {
@@ -47,6 +47,7 @@ module.exports.run = async function ({ api, event, args }) {
 🔸 /approve — বর্তমান গ্রুপ approve করুন
 🔸 /approve list — সব approved গ্রুপের লিস্ট
 🔸 /approve pending — pending গ্রুপের লিস্ট
+🔸 /approve reject <groupID> — নির্দিষ্ট গ্রুপ reject করুন
 🔸 /approve help — এই help মেসেজ
 
 💡 Note: শুধু owner এই কমান্ড ব্যবহার করতে পারবেন।`;
@@ -55,13 +56,13 @@ module.exports.run = async function ({ api, event, args }) {
 
       case "list": {
         const { approvedGroups = [] } = config.APPROVAL;
-        
+
         if (approvedGroups.length === 0) {
           return api.sendMessage("📝 কোনো approved গ্রুপ নেই!", threadID, messageID);
         }
 
         let msg = `✅ APPROVED GROUPS (${approvedGroups.length}):\n\n`;
-        
+
         for (let i = 0; i < Math.min(approvedGroups.length, 15); i++) {
           try {
             const info = await api.getThreadInfo(approvedGroups[i]);
@@ -73,169 +74,102 @@ module.exports.run = async function ({ api, event, args }) {
             msg += `   🆔 ${approvedGroups[i]}\n\n`;
           }
         }
-        
+
         if (approvedGroups.length > 15) {
           msg += `... এবং আরও ${approvedGroups.length - 15}টি গ্রুপ`;
         }
-        
+
         return api.sendMessage(msg, threadID, messageID);
       }
 
       case "pending": {
-        const { pendingGroups = [] } = config.APPROVAL;
-        
+        const pendingGroups = Groups.getByStatus('pending');
+
         if (pendingGroups.length === 0) {
-          return api.sendMessage("⏳ কোনো pending গ্রুপ নেই!", threadID, messageID);
+          return api.sendMessage("📝 কোনো pending গ্রুপ নেই!", threadID, messageID);
         }
 
         let msg = `⏳ PENDING GROUPS (${pendingGroups.length}):\n\n`;
-        
+
         for (let i = 0; i < Math.min(pendingGroups.length, 10); i++) {
-          try {
-            const info = await api.getThreadInfo(pendingGroups[i]);
-            msg += `${i + 1}. ${info.threadName}\n`;
-            msg += `   🆔 ${pendingGroups[i]}\n`;
-            msg += `   👥 ${info.participantIDs.length} members\n\n`;
-          } catch {
-            msg += `${i + 1}. [তথ্য পাওয়া যায়নি]\n`;
-            msg += `   🆔 ${pendingGroups[i]}\n\n`;
-          }
+          const group = pendingGroups[i];
+          msg += `${i + 1}. ${group.threadName || 'Unknown Group'}\n`;
+          msg += `   🆔 ${group.threadID}\n`;
+          msg += `   👥 ${group.memberCount || 0} members\n`;
+          msg += `   📅 Pending since: ${new Date(group.pendingAt || group.createdAt).toLocaleDateString('bn-BD')}\n\n`;
         }
-        
-        msg += `💡 Approve করতে: /approve\n`;
-        msg += `❌ Reject করতে: bot কে গ্রুপ থেকে remove করুন`;
-        
+
+        if (pendingGroups.length > 10) {
+          msg += `... এবং আরো ${pendingGroups.length - 10}টি গ্রুপ`;
+        }
+
         return api.sendMessage(msg, threadID, messageID);
       }
 
+      case "reject": {
+        const targetID = args[1];
+        if (!targetID) {
+          return api.sendMessage("❌ Group ID দিন!\nExample: /approve reject 12345", threadID, messageID);
+        }
+
+        const success = Groups.rejectGroup(targetID);
+        if (success) {
+          const groupData = Groups.getData(targetID);
+          const groupName = groupData ? groupData.threadName : 'Unknown Group';
+
+          api.sendMessage(`❌ Group "${groupName}" reject করা হয়েছে!`, threadID, messageID);
+
+          // Notify the group
+          try {
+            api.sendMessage(
+              `❌ এই গ্রুপটি admin দ্বারা reject করা হয়েছে।\n\n` +
+              `🚫 Bot এর কোনো command আর কাজ করবে না।\n` +
+              `📞 আরো তথ্যের জন্য admin এর সাথে যোগাযোগ করুন।`,
+              targetID
+            );
+          } catch (error) {
+            console.log('Could not notify rejected group:', error.message);
+          }
+        } else {
+          api.sendMessage("❌ Group reject করতে সমস্যা হয়েছে!", threadID, messageID);
+        }
+        break;
+      }
+
       default: {
-        // Approve current group
-        const targetID = String(threadID);
-        
-        // Clean and normalize arrays
-        config.APPROVAL.approvedGroups = [...new Set((config.APPROVAL.approvedGroups || []).map(id => String(id)))];
-        config.APPROVAL.pendingGroups = [...new Set((config.APPROVAL.pendingGroups || []).map(id => String(id)))];
-        config.APPROVAL.rejectedGroups = [...new Set((config.APPROVAL.rejectedGroups || []).map(id => String(id)))];
-        
-        // Check if already approved
-        if (config.APPROVAL.approvedGroups.includes(targetID)) {
-          return api.sendMessage("✅ এই গ্রুপ ইতিমধ্যে approve করা আছে এবং সব command চালু আছে!", threadID, messageID);
+        // Approve current group or specified group
+        const targetID = args[0] || threadID;
+
+        if (Groups.isApproved(targetID)) {
+          return api.sendMessage("✅ এই গ্রুপ ইতিমধ্যে approved!", threadID, messageID);
         }
-        
-        // Add to approved list
-        config.APPROVAL.approvedGroups.push(targetID);
-        
-        // Remove from other lists
-        config.APPROVAL.pendingGroups = config.APPROVAL.pendingGroups.filter(id => String(id) !== targetID);
-        config.APPROVAL.rejectedGroups = config.APPROVAL.rejectedGroups.filter(id => String(id) !== targetID);
-        
-        // Save config
-        writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
-        
-        // Get group info for success message
-        try {
-          const groupInfo = await api.getThreadInfo(targetID);
-          const groupName = groupInfo.name || "Unnamed Group";
-          
-          const successMsg = `✅ Group Successfully Approved!\n\n` +
-            `📝 Group: ${groupName}\n` +
-            `🆔 ID: ${targetID}\n` +
-            `👥 Members: ${groupInfo.participantIDs?.length || 0}\n` +
-            `📅 Approved: ${new Date().toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' })}\n\n` +
-            `🎉 এখন সব command চালু আছে!\n` +
-            `📝 Help দেখতে: ${global.config.PREFIX || '/'}help`;
-          
-          return api.sendMessage(successMsg, threadID, messageID);
-        } catch (error) {
-          return api.sendMessage(`✅ গ্রুপ approve করা হয়েছে! এখন সব command চালু আছে।`, threadID, messageID);
-        } config.APPROVAL.rejectedGroups.filter(id => String(id) !== targetID);
-        
-        // Save config
-        writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
-        
-        // Create user data for all group members
-        try {
-          const Users = require('../../includes/database/users')({ api });
-          const threadInfo = await api.getThreadInfo(targetID);
-          
-          logger.log(`Creating user data for ${threadInfo.participantIDs.length} members in approved group ${targetID}`, 'DATABASE');
-          
-          for (const memberID of threadInfo.participantIDs) {
+
+        // Approve the group
+        const success = Groups.approveGroup(targetID);
+
+        if (success) {
+          const groupData = Groups.getData(targetID);
+          const groupName = groupData ? groupData.threadName : "Unknown Group";
+
+          api.sendMessage(`✅ Group "${groupName}" approved successfully!`, threadID, messageID);
+
+          // Send welcome message to approved group
+          if (targetID !== threadID) {
             try {
-              if (!global.data.allUserID.includes(memberID)) {
-                global.data.allUserID.push(memberID);
-                await Users.createData(memberID);
-                logger.log(`User data created for member ${memberID}`, 'DATABASE');
-              }
-            } catch (memberError) {
-              logger.log(`Warning: Could not create data for member ${memberID}: ${memberError.message}`, 'WARN');
-            }
-            
-            // Add small delay to prevent rate limiting
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-        } catch (error) {
-          logger.log(`Error creating member data: ${error.message}`, 'ERROR');
-        }
-        
-        // Auto backup to groupdata.json
-        try {
-          const path = require('path');
-          const groupDataPath = path.join(__dirname, '../../utils/groupdata.json');
-          
-          let groupData = {};
-          if (require('fs-extra').existsSync(groupDataPath)) {
-            groupData = JSON.parse(require('fs-extra').readFileSync(groupDataPath, 'utf8'));
-          } else {
-            groupData = { approvedGroups: [], lastUpdated: "", totalGroups: 0 };
-          }
-          
-          // Update backup with current approved groups
-          const currentTime = new Date().toLocaleString("bn-BD", { timeZone: "Asia/Dhaka" });
-          groupData.approvedGroups = [];
-          groupData.lastUpdated = currentTime;
-          groupData.totalGroups = config.APPROVAL.approvedGroups.length;
-          
-          for (const gId of config.APPROVAL.approvedGroups) {
-            try {
-              const gInfo = await api.getThreadInfo(gId);
-              groupData.approvedGroups.push({
-                threadID: gId,
-                threadName: gInfo.threadName || "Unknown Group",
-                memberCount: gInfo.participantIDs.length,
-                backupDate: currentTime,
-                status: "auto_backed_up"
-              });
-            } catch (e) {
-              groupData.approvedGroups.push({
-                threadID: gId,
-                threadName: "Group Info Unavailable",
-                memberCount: 0,
-                backupDate: currentTime,
-                status: "auto_backed_up"
-              });
+              api.sendMessage(
+                `🎉 অভিনন্দন! আপনার গ্রুপটি approve করা হয়েছে!\n\n` +
+                `✅ Bot commands এখন active।\n` +
+                `📝 Type ${global.config.PREFIX || '/'}help to see available commands.\n` +
+                `👑 Bot Admin: ${OWNER_ID}`,
+                targetID
+              );
+            } catch (error) {
+              logger.log(`Could not send welcome message: ${error.message}`, 'WARN');
             }
           }
-          
-          require('fs-extra').writeFileSync(groupDataPath, JSON.stringify(groupData, null, 2), 'utf8');
-        } catch (backupError) {
-          console.log("Auto backup failed:", backupError.message);
-        }
-        
-        try {
-          const info = await api.getThreadInfo(targetID);
-          const successMsg = `✅ গ্রুপ চালু হয়েছে!
 
-📝 নাম: ${info.threadName}
-👥 মেম্বার: ${info.participantIDs.length} জন
-🆔 ID: ${targetID}
-
-🎉 এখন সব কমান্ড ব্যবহার করা যাবে!
-📋 /help লিখে দেখুন।`;
-          
-          return api.sendMessage(successMsg, threadID, messageID);
-        } catch {
-          return api.sendMessage("✅ গ্রুপ চালু হয়েছে! এখন সব কমান্ড ব্যবহার করা যাবে।", threadID, messageID);
+        } else {
+          api.sendMessage("❌ Group approve করতে সমস্যা হয়েছে!", threadID, messageID);
         }
       }
     }
