@@ -12,7 +12,7 @@ module.exports.config = {
 
 var AIMove;
 const fs = require("fs");
-const { loadImage, createCanvas } = require("canvas");
+//const { loadImage, createCanvas } = require("canvas"); // Removed canvas import
 
 function startBoard({isX, data}) {
   data.board = new Array(3);
@@ -25,25 +25,28 @@ function startBoard({isX, data}) {
 }
 
 async function displayBoard(data) {
-  const path = __dirname + "/cache/ttt.png";
-  let canvas = createCanvas(1200, 1200);
-  let cc = canvas.getContext("2d");
-  let background = await loadImage("https://i.postimg.cc/nhDWmj1h/background.png");
-  cc.drawImage(background, 0, 0, 1200, 1200);
-  var quanO = await loadImage("https://i.postimg.cc/rFP6xLXQ/O.png");
-  var quanX = await loadImage("https://i.postimg.cc/HLbFqcJh/X.png");
+  //const path = __dirname + "/cache/ttt.png";
+  //let canvas = createCanvas(1200, 1200);
+  //let cc = canvas.getContext("2d");
+  //let background = await loadImage("https://i.postimg.cc/nhDWmj1h/background.png");
+  //cc.drawImage(background, 0, 0, 1200, 1200);
+  //var quanO = await loadImage("https://i.postimg.cc/rFP6xLXQ/O.png");
+  //var quanX = await loadImage("https://i.postimg.cc/HLbFqcJh/X.png");
+  let boardString = "";
   for (var i = 0; i < 3; i++) {
     for (var j = 0; j < 3; j++) {
       var temp = data.board[i][j].toString();
-      var x = 54 + 366*j;
-      var y = 54 + 366*i;
-      if (temp == "1") if (data.isX) { cc.drawImage(quanO, x, y, 360, 360) } else cc.drawImage(quanX, x, y, 360, 360);
-      if (temp == "2") if (data.isX) { cc.drawImage(quanX, x, y, 360, 360) } else cc.drawImage(quanO, x, y, 360, 360);
+      if (temp == "0") boardString += ". ";
+      else if (temp == "1") boardString += "O ";
+      else if (temp == "2") boardString += "X ";
     }
+    boardString += "\n";
   }
+
   var ketqua = [];
-  fs.writeFileSync(path, canvas.toBuffer("image/png"));
-  ketqua.push(fs.createReadStream(path));
+  //fs.writeFileSync(path, canvas.toBuffer("image/png"));
+  //ketqua.push(fs.createReadStream(path));
+  ketqua.push({ body: boardString });
   return ketqua;
 }
 
@@ -168,7 +171,8 @@ module.exports.handleReply = async function({ event, api, handleReply }) {
       global.moduleData.tictactoe.delete(threadID);
     }
     var msg = lmao !== "" ? lmao : temp == undefined ? "Reply number of cells to check" : temp;
-    api.sendMessage({ body: msg, attachment: await displayBoard(data)}, threadID, (error, info) => {
+    const boardDisplay = await displayBoard(data);
+    api.sendMessage({ body: msg + "\n\n" + boardDisplay[0].body}, threadID, (error, info) => {
       global.client.handleReply.push({
         name: this.config.name,
         author: senderID,
@@ -193,7 +197,8 @@ module.exports.run = async function ({ event, api, args }) {
   }
   if (args[0].toLowerCase() == "continue") {
     if (!data.gameOn) return api.sendMessage("No data! use " + concak + "x/o to play new", threadID, messageID);
-    return api.sendMessage({ body: "Reply number of cells to check", attachment: await displayBoard(data)}, threadID, (error, info) => {
+    const boardDisplay = await displayBoard(data);
+    return api.sendMessage({ body: "Reply number of cells to check\n\n" + boardDisplay[0].body}, threadID, (error, info) => {
       global.client.handleReply.push({
         name: this.config.name,
         author: senderID,
@@ -206,7 +211,8 @@ module.exports.run = async function ({ event, api, args }) {
     if (abc !== "x" && abc !== "o") return api.sendMessage("Please select x or o", threadID, messageID);
     if (abc == "o") {
       newData = startBoard({ isX: false, data, threadID });
-      api.sendMessage({ body: "You go first!\nReply the number of cells to check", attachment: await displayBoard(newData)}, threadID, (error, info) => {
+      const boardDisplay = await displayBoard(newData);
+      api.sendMessage({ body: "You go first!\nReply the number of cells to check\n\n" + boardDisplay[0].body}, threadID, (error, info) => {
         global.client.handleReply.push({
           name: this.config.name,
           author: senderID,
@@ -217,7 +223,8 @@ module.exports.run = async function ({ event, api, args }) {
     if (abc == "x") {
       newData = startBoard({ isX: true, data, threadID });
       AIStart(newData);
-      api.sendMessage({ body: "I go first!\nReply number of cells to check", attachment: await displayBoard(data)}, threadID,(error, info) => {
+      const boardDisplay = await displayBoard(data);
+      api.sendMessage({ body: "I go first!\nReply number of cells to check\n\n" + boardDisplay[0].body}, threadID,(error, info) => {
         global.client.handleReply.push({
           name: this.config.name,
           author: senderID,

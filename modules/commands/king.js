@@ -1,4 +1,4 @@
-const { loadImage, createCanvas } = require('canvas');
+// Canvas removed to fix libuuid error
 const fs = require('fs-extra');
 const axios = require('axios');
 const path = require('path');
@@ -78,58 +78,9 @@ function drawCircularImage(ctx, image, x, y, size) {
 }
 
 async function makeImage({ one, two }) {
-  try {
-    const __root = path.resolve(__dirname, "cache", "canvas");
-    const backgroundPath = __root + "/king_propose.png";
-    const pathImg = __root + `/king_${one}_${two}_${Date.now()}.png`;
-    const avatarOnePath = __root + `/avt_${one}.png`;
-    const avatarTwoPath = __root + `/avt_${two}.png`;
-
-    // Check if background exists
-    if (!fs.existsSync(backgroundPath)) {
-      throw new Error("King background image not found. Please restart the bot to download it.");
-    }
-
-    // Download avatars
-    console.log("[KING] Downloading avatars...");
-    const avatar1Success = await downloadAvatar(one, avatarOnePath);
-    const avatar2Success = await downloadAvatar(two, avatarTwoPath);
-
-    if (!avatar1Success || !avatar2Success) {
-      throw new Error("Failed to download user avatars");
-    }
-
-    // Load images
-    const background = await loadImage(backgroundPath);
-    const avatar1 = await loadImage(avatarOnePath);
-    const avatar2 = await loadImage(avatarTwoPath);
-
-    // Create canvas (background = 1023x1024)
-    const canvas = createCanvas(1023, 1024);
-    const ctx = canvas.getContext('2d');
-
-    // Draw background
-    ctx.drawImage(background, 0, 0, 1023, 1024);
-
-    // Draw avatars as circles (custom positions)
-    // avatar1: (276, 164), size: 130
-    // avatar2: (640, 237), size: 152
-    drawCircularImage(ctx, avatar1, 276, 164, Math.min(130, 144));
-    drawCircularImage(ctx, avatar2, 640, 237, Math.min(154, 152));
-
-    // Save the final image
-    const buffer = canvas.toBuffer('image/png');
-    fs.writeFileSync(pathImg, buffer);
-
-    // Clean up avatar files
-    fs.unlinkSync(avatarOnePath);
-    fs.unlinkSync(avatarTwoPath);
-
-    return pathImg;
-  } catch (error) {
-    console.error("[KING] Error creating image:", error.message);
-    throw error;
-  }
+  // Canvas functionality disabled due to system requirements
+  // Return null to indicate image generation is not available
+  return null;
 }
 
 module.exports.run = async function ({ event, api, args }) {
@@ -159,20 +110,14 @@ module.exports.run = async function ({ event, api, args }) {
       // Remove processing message
       await api.unsendMessage(processingMsg.messageID);
       
-      // Send the king proposal
+      // Send the king proposal (text only due to system limitations)
       return api.sendMessage({
-        body: `👑 ${taggedName}, you have been crowned by someone! 👑\n\n🌹 Made with love by TOHI-BOT-HUB 🌹`,
+        body: `👑 ${taggedName}, you have been crowned by someone! 👑\n\n🌹 Made with love by TOHI-BOT-HUB 🌹\n\n📝 Note: Image generation temporarily unavailable`,
         mentions: [{
           tag: taggedName,
           id: mention
-        }],
-        attachment: fs.createReadStream(imagePath)
-      }, threadID, () => {
-        // Clean up the image file
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
-        }
-      }, messageID);
+        }]
+      }, threadID, messageID);
     } catch (imageError) {
       // Remove processing message
       await api.unsendMessage(processingMsg.messageID);

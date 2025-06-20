@@ -1,4 +1,3 @@
-const { loadImage, createCanvas } = require('canvas');
 const fs = require('fs-extra');
 const axios = require('axios');
 const path = require('path');
@@ -14,7 +13,6 @@ module.exports.config = {
   usages: "[tag]",
   cooldowns: 5,
   dependencies: {
-    "canvas": "",
     "axios": "",
     "fs-extra": ""
   }
@@ -103,68 +101,9 @@ async function downloadAvatar(userID, outputPath) {
   }
 }
 
-function drawCircularImage(ctx, image, x, y, size) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x + size/2, y + size/2, size/2, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.drawImage(image, x, y, size, size);
-  ctx.restore();
-}
-
 async function makeImage({ one, two }) {
-  try {
-    const __root = path.resolve(__dirname, "cache", "canvas");
-    const backgroundPath = __root + "/queen_propose.png";
-    const pathImg = __root + `/queen_${one}_${two}_${Date.now()}.png`;
-    const avatarOnePath = __root + `/avt_${one}.png`;
-    const avatarTwoPath = __root + `/avt_${two}.png`;
-
-    // Check if background exists
-    if (!fs.existsSync(backgroundPath)) {
-      throw new Error("Queen background image not found. Please restart the bot to download it.");
-    }
-
-    // Download avatars
-    console.log("[QUEEN] Downloading avatars...");
-    const avatar1Success = await downloadAvatar(one, avatarOnePath);
-    const avatar2Success = await downloadAvatar(two, avatarTwoPath);
-
-    if (!avatar1Success || !avatar2Success) {
-      throw new Error("Failed to download user avatars");
-    }
-
-    // Load images
-    const background = await loadImage(backgroundPath);
-    const avatar1 = await loadImage(avatarOnePath);
-    const avatar2 = await loadImage(avatarTwoPath);
-
-    // Create canvas (background = 1023x1024)
-    const canvas = createCanvas(1024, 1024);
-    const ctx = canvas.getContext('2d');
-
-    // Draw background
-    ctx.drawImage(background, 0, 0, 1023, 1024);
-
-    // Draw avatars as circles (custom positions)
-    // avatar1: (276, 164), size: 130
-    // avatar2: (640, 237), size: 152
-    drawCircularImage(ctx, avatar1, 640, 237, Math.min(154, 152));
-    drawCircularImage(ctx, avatar2, 276, 164, Math.min(130, 144));
-
-    // Save the final image
-    const buffer = canvas.toBuffer('image/png');
-    fs.writeFileSync(pathImg, buffer);
-
-    // Clean up avatar files
-    fs.unlinkSync(avatarOnePath);
-    fs.unlinkSync(avatarTwoPath);
-
-    return pathImg;
-  } catch (error) {
-    console.error("[QUEEN] Error creating image:", error.message);
-    throw error;
-  }
+  // Canvas functionality disabled due to system requirements
+  return null;
 }
 
 module.exports.run = async function ({ event, api, args }) {
@@ -184,44 +123,14 @@ module.exports.run = async function ({ event, api, args }) {
       return api.sendMessage("😅 You can't make yourself the queen! Tag someone else.", threadID, messageID);
     }
 
-    // Send processing message
-    const processingMsg = await api.sendMessage("👑 Creating your QUEEN image... Please wait!", threadID);
-
-    try {
-      // Create the queen image
-      const imagePath = await makeImage({ one: senderID, two: mention });
-
-      // Remove processing message
-      await api.unsendMessage(processingMsg.messageID);
-
-      // Send the queen proposal
-      return api.sendMessage({
-        body: `👑 ${taggedName}, you have been crowned as QUEEN by someone! 👑\n\n🌹 Made with love by TOHI-BOT-HUB 🌹`,
-        mentions: [{
-          tag: taggedName,
-          id: mention
-        }],
-        attachment: fs.createReadStream(imagePath)
-      }, threadID, () => {
-        // Clean up the image file
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
-        }
-      }, messageID);
-    } catch (imageError) {
-      // Remove processing message
-      await api.unsendMessage(processingMsg.messageID);
-
-      console.error("[QUEEN] Image creation failed:", imageError.message);
-      return api.sendMessage(
-        "❌ **QUEEN Image Failed**\n\n" +
-        "• Failed to create queen image\n" +
-        "• Please try again later\n\n" +
-        `🔧 **Error:** ${imageError.message}\n\n` +
-        "🚩 **Made by TOHI-BOT-HUB**",
-        threadID, messageID
-      );
-    }
+    // Send the queen proposal (text only due to system limitations)
+    return api.sendMessage({
+      body: `👑 ${taggedName}, you have been crowned as QUEEN by someone! 👑\n\n🌹 Made with love by TOHI-BOT-HUB 🌹\n\n📝 Note: Image generation temporarily unavailable`,
+      mentions: [{
+        tag: taggedName,
+        id: mention
+      }]
+    }, threadID, messageID);
 
   } catch (error) {
     console.error("[QUEEN] Main error:", error.message);

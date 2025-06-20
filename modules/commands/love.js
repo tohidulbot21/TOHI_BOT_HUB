@@ -25,7 +25,7 @@ module.exports.config = {
 const fs = require("fs-extra");
 const path = require("path");
 const axios = require("axios");
-const { loadImage, createCanvas } = require('canvas');
+// Canvas removed to fix libuuid error
 
 module.exports.onLoad = async () => {
   const cachePath = __dirname + "/cache/";
@@ -48,54 +48,8 @@ function drawCircularImage(ctx, image, x, y, size) {
 }
 
 async function makeImage({ one, two }) {
-  const basePath = path.resolve(__dirname, "cache");
-  
-  // Load base image
-  const baseImg = await loadImage(basePath + "/ewhd.png");
-  
-  // Create canvas
-  const canvas = createCanvas(1632, 917);
-  const ctx = canvas.getContext('2d');
-  
-  // Draw base image
-  ctx.drawImage(baseImg, 0, 0, 1632, 917);
-
-  // Paths for avatars
-  let avatarOnePath = basePath + `/avt_${one}.png`;
-  let avatarTwoPath = basePath + `/avt_${two}.png`;
-  let outPath = basePath + `/ewhd_${one}_${two}.png`;
-
-  // Download first avatar
-  let res1 = await axios.get(
-    `https://graph.facebook.com/${one}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`,
-    { responseType: "arraybuffer" }
-  );
-  fs.writeFileSync(avatarOnePath, Buffer.from(res1.data, "utf-8"));
-
-  // Download second avatar
-  let res2 = await axios.get(
-    `https://graph.facebook.com/${two}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`,
-    { responseType: "arraybuffer" }
-  );
-  fs.writeFileSync(avatarTwoPath, Buffer.from(res2.data, "utf-8"));
-
-  // Load avatars
-  const avatar1 = await loadImage(avatarOnePath);
-  const avatar2 = await loadImage(avatarTwoPath);
-
-  // Draw circular avatars
-  drawCircularImage(ctx, avatar1, 215, 258, 400);
-  drawCircularImage(ctx, avatar2, 1015, 260, 400);
-
-  // Save the final image
-  const buffer = canvas.toBuffer('image/png');
-  fs.writeFileSync(outPath, buffer);
-
-  // Cleanup avatars
-  fs.unlinkSync(avatarOnePath);
-  fs.unlinkSync(avatarTwoPath);
-
-  return outPath;
+  // Canvas functionality disabled due to system requirements
+  return null;
 }
 
 module.exports.run = async function({ event, api, args }) {
@@ -107,17 +61,14 @@ module.exports.run = async function({ event, api, args }) {
     return api.sendMessage("Please tag 1 person", threadID, messageID);
   } else {
     var id1 = senderID, id2 = mentionId;
-    makeImage({ one: id1, two: id2 }).then(imgPath => {
-      api.sendMessage(
-        {
-          body: `👉 @${mentionTag} love you so much🥰'"`,
-          mentions: [{ tag: mentionTag, id: mentionId }],
-          attachment: fs.createReadStream(imgPath)
-        },
-        threadID,
-        () => fs.unlinkSync(imgPath),
-        messageID
-      );
-    });
+    // Send text-only message due to system limitations
+    api.sendMessage(
+      {
+        body: `👉 @${mentionTag} love you so much🥰\n\n📝 Note: Image generation temporarily unavailable`,
+        mentions: [{ tag: mentionTag, id: mentionId }]
+      },
+      threadID,
+      messageID
+    );
   }
 };
