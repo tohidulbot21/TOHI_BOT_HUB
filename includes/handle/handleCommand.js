@@ -130,18 +130,18 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
 
         // If group is not approved and sender is not owner, block all commands
         if (!isApproved && !isOwner) {
-          // Only allow approve command for owner
+          // Block all commands for non-owners in unapproved groups
+          return;
+        }
+        
+        // Allow approve command for owners even in unapproved groups
+        if (!isApproved && isOwner) {
           const messageBody = event.body || "";
           const prefix = global.config.PREFIX || "/";
           const command = messageBody.substring(prefix.length).split(' ')[0].toLowerCase();
           
-          // Block all commands for non-owners in unapproved groups
-          return;
-
-          if (messageBody.startsWith(prefix + "approve") && isOwner) {
-            // Allow approve command to pass through
-          } else {
-            // Block all other commands
+          // Only allow approve command for owners in unapproved groups
+          if (command !== "approve") {
             return;
           }
         }

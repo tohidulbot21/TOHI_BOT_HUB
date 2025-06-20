@@ -33,12 +33,21 @@ module.exports.run = async function({ api, event, Groups }) {
     const isPending = Groups.isPending(threadID);
     const isRejected = Groups.isRejected(threadID);
     
-    // If group is not approved and sender is not owner
-    if (!isApproved && !isOwner) {
+    // If group is not approved
+    if (!isApproved) {
       const command = event.body.split(' ')[0].substring(1).toLowerCase();
       
-      // Block all commands for non-owners
-      event.blockCommand = true;
+      // Allow approve command for owners, block everything else
+      if (isOwner && command === 'approve') {
+        return; // Let approve command pass through for owners
+      }
+      
+      // Block all commands for non-owners or non-approve commands
+      if (!isOwner) {
+        event.blockCommand = true;
+      } else if (command !== 'approve') {
+        event.blockCommand = true;
+      }
       
       // Block all other commands
       if (isPending) {
