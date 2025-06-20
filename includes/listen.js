@@ -119,25 +119,9 @@ module.exports = function ({ api }) {
     logger.log(`Handler loading error: ${error.message}`, "ERROR");
   }
 
-  // Strict approval system - only approved groups allowed
+  // Simple approval check - no longer used in main flow
   function checkApproval(event) {
-    // Always allow non-group messages and admin messages
-    if (!event.threadID || event.threadID === event.senderID) return true;
-    
-    const threadID = String(event.threadID);
-    const isAdmin = global.config.ADMINBOT?.includes(event.senderID);
-    
-    // Allow all admins
-    if (isAdmin) return true;
-    
-    // Use new Groups system
-    const Groups = require("./database/groups")({ api });
-    
-    const isApproved = Groups.isApproved(threadID);
-    const isRejected = Groups.isRejected(threadID);
-    
-    // Strict: Only allow approved groups
-    return isApproved && !isRejected;
+    return true; // Deprecated, approval now handled inline
   }
 
   // Much more lenient rate limiting
@@ -162,13 +146,18 @@ module.exports = function ({ api }) {
     
     const errorStr = error.toString().toLowerCase();
     
-    // Only ignore very common/harmless errors
+    // Ignore common/harmless errors
     const ignorableErrors = [
       'rate limit exceeded',
       'enoent',
       'timeout',
       'connection reset',
-      'typ', 'typing', 'presence'
+      'typ', 'typing', 'presence',
+      'read_receipt',
+      'delivery_receipt',
+      'not allowed by admins',
+      'couldn\'t send',
+      'error: 3370026'
     ];
     
     if (ignorableErrors.some(err => errorStr.includes(err))) {
@@ -186,12 +175,17 @@ module.exports = function ({ api }) {
       // Skip ready events
       if (event.type === 'ready') return;
       
-      // Check approval for groups
+      // Check approval for groups (admins bypass)
       if (event.threadID && event.threadID !== event.senderID) {
-        const approved = checkApproval(event);
-        if (!approved) {
-          // Silently block unapproved groups (except admins)
-          return;
+        const isAdmin = global.config.ADMINBOT?.includes(event.senderID);
+        
+        if (!isAdmin) {
+          const Groups = require("./database/groups")({ api });
+          
+          if (!Groups.isApproved(event.threadID)) {
+            // Silently block unapproved groups
+            return;
+          }
         }
       }
       
@@ -245,12 +239,15 @@ module.exports = function ({ api }) {
         case "typ":
         case "typing":
         case "presence":
+        case "read_receipt":
+        case "delivery_receipt":
+        case "read":
+        case "delivered":
           // Handle silently - these are normal Facebook events
           break;
           
         default:
-          // Log unknown events for debugging but don't treat as errors
-          logger.log(`Unknown event type: ${event.type}`, "DEBUG");
+          // Silently ignore unknown event types to reduce spam
           break;
       }
       

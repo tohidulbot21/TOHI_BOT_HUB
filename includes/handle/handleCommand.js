@@ -134,7 +134,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
           if (!isApproveCommand) {
             // Send notification only once per group per session
             if (!global.notifiedGroups) global.notifiedGroups = new Set();
-            
+
             if (!global.notifiedGroups.has(event.threadID)) {
               api.sendMessage(
                 `⚠️ এই গ্রুপটি এখনো approve করা হয়নি!\n\n` +
@@ -145,7 +145,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
               );
               global.notifiedGroups.add(event.threadID);
             }
-            
+
             logger.log(`Command ${commandName} blocked in unapproved group ${event.threadID}`, "DEBUG");
             return;
           }
@@ -322,7 +322,7 @@ module.exports = function ({ api, Users, Threads, Currencies, logger, botSetting
         // Create stylish console output
         const chalk = require("chalk");
         const gradient = require("gradient-string");
-        
+
         console.log(chalk.cyan("╭─────────────────────────────────────╮"));
         console.log(chalk.cyan("│") + gradient.rainbow("        🚀 COMMAND EXECUTED 🚀       ") + chalk.cyan("│"));
         console.log(chalk.cyan("╰─────────────────────────────────────╯"));
