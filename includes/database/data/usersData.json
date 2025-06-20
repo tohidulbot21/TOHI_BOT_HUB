@@ -2,7 +2,7 @@
     "100092006324917": {
         "userID": "100092006324917",
         "money": 1e+96,
-        "exp": 1505,
+        "exp": 1504,
         "createTime": {
             "timestamp": 1748273172692
         },
@@ -11,7 +11,7 @@
             "busy": false,
             "workTime": 1749800037975
         },
-        "lastUpdate": 1750423435470,
+        "lastUpdate": 1750423199456,
         "name": "MD Tohidul Islam",
         "lastDaily": 1749800679916
     },
@@ -3207,5 +3207,30 @@
         },
         "lastUpdate": 1750423247794,
         "name": "কবি কাজি নজরুল ইসলাম"
+    },
+    "61568541020619": {
+        "userID": "61568541020619",
+        "money": 0,
+        "exp": 0,
+        "createTime": {
+            "timestamp": 1750423662895
+        },
+        "data": {
+            "timestamp": 1750423662895
+        },
+        "lastUpdate": 1750423662895
+    },
+    "61577841500401": {
+        "userID": "61577841500401",
+        "money": 0,
+        "exp": 1,
+        "createTime": {
+            "timestamp": 1750423662898
+        },
+        "data": {
+            "timestamp": 1750423662898
+        },
+        "lastUpdate": 1750423798632,
+        "name": "Rokibul Islam"
     }
 }
