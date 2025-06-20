@@ -21,7 +21,7 @@
   "commandDisabled": [],
   "eventDisabled": [],
   "BOTNAME": "TOHI-BOT",
-  "PREFIX": "",
+  "PREFIX": "*",
   "ADMINBOT": [
     "100092006324917"
   ],
