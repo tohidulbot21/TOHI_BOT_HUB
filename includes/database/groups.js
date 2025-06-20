@@ -257,8 +257,8 @@ module.exports = function({ api }) {
       try {
         // Check if already migrated
         const data = JSON.parse(fs.readFileSync(groupsDataPath, "utf8"));
-        if (data.settings && data.settings.migrated) {
-          return true; // Already migrated, skip
+        if (data.settings && data.settings.migrated === true) {
+          return false; // Already migrated, skip silently
         }
         
         const config = JSON.parse(fs.readFileSync(configPath, "utf8"));

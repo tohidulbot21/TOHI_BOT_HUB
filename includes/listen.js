@@ -136,7 +136,7 @@ module.exports = function ({ api }) {
     const isApproved = Groups.isApproved(threadID);
     const isRejected = Groups.isRejected(threadID);
     
-    // Strict: Only allow approved groups (reject all others except admins)
+    // Strict: Only allow approved groups
     return isApproved && !isRejected;
   }
 
@@ -186,12 +186,12 @@ module.exports = function ({ api }) {
       // Skip ready events
       if (event.type === 'ready') return;
       
-      // Very permissive approval check - mainly for logging
+      // Check approval for groups
       if (event.threadID && event.threadID !== event.senderID) {
         const approved = checkApproval(event);
         if (!approved) {
-          // Log but don't block for debugging
-          logger.log(`Group ${event.threadID} not fully approved, but allowing`, "DEBUG");
+          // Silently block unapproved groups (except admins)
+          return;
         }
       }
       
