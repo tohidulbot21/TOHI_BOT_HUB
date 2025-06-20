@@ -29,7 +29,6 @@ module.exports.config = {
 module.exports.handleEvent = async function({
   api, event, Currencies, getText, Threads }) {
   var { threadID, senderID } = event;
-  const { loadImage, createCanvas } = require("canvas");
   const fs = global.nodemodule["fs-extra"];
   const axios = global.nodemodule["axios"];
   let pathImg = __dirname + "/cache/rankup/rankup.png";
